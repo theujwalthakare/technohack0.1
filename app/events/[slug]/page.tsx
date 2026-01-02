@@ -1,0 +1,162 @@
+import { getEventBySlug } from "@/lib/actions/event.actions";
+import { getRegistrationStatus } from "@/lib/actions/user.actions";
+import { PageContainer } from "@/components/shared/PageContainer";
+import { Calendar, MapPin, Users, Phone, User, Trophy, DollarSign } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { RegisterButton } from "@/components/events/RegisterButton";
+
+// Dynamic metadata
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+    const { slug } = await params;
+    const event = await getEventBySlug(slug);
+    if (!event) return { title: 'Not Found' };
+
+    return {
+        title: `${event.title} | TechnoHack 2026`,
+        description: event.description,
+    };
+}
+
+export default async function EventDetailsPage({ params }: { params: { slug: string } }) {
+    const { slug } = await params;
+    const event = await getEventBySlug(slug);
+
+    if (!event) {
+        notFound();
+    }
+
+    // Check registration status
+    const registration = await getRegistrationStatus(event._id);
+    const isRegistered = !!registration;
+
+    return (
+        <div className="min-h-screen bg-background pb-20">
+            {/* Hero Header */}
+            <div className="relative h-[50vh] w-full">
+                <Image
+                    src={event.image}
+                    alt={event.title}
+                    fill
+                    className="object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
+
+                <div className="absolute bottom-0 w-full">
+                    <PageContainer className="pb-10">
+                        <span className="inline-block px-3 py-1 bg-primary/20 border border-primary text-primary rounded-full text-sm font-bold mb-4">
+                            {event.category}
+                        </span>
+                        <h1 className="text-4xl md:text-7xl font-bold font-orbitron mb-4 text-white">
+                            {event.title}
+                        </h1>
+                    </PageContainer>
+                </div>
+            </div>
+
+            <PageContainer>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+
+                    {/* Main Content */}
+                    <div className="lg:col-span-2 space-y-12">
+
+                        {/* Description */}
+                        <section>
+                            <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                                About Event
+                            </h2>
+                            <div className="prose prose-invert max-w-none text-muted-foreground whitespace-pre-wrap">
+                                {event.description}
+                            </div>
+                        </section>
+
+                        {/* Structure/Rules */}
+                        {event.rules && (
+                            <section className="bg-white/5 border border-white/10 rounded-xl p-6">
+                                <h2 className="text-2xl font-bold text-white mb-4">Structure & Rules</h2>
+                                <div className="prose prose-invert max-w-none text-muted-foreground whitespace-pre-wrap text-sm">
+                                    {event.rules}
+                                </div>
+                            </section>
+                        )}
+                    </div>
+
+                    {/* Sidebar / Info Card */}
+                    <div className="space-y-6">
+                        <div className="bg-card border border-white/10 rounded-xl p-6 sticky top-24">
+                            <div className="space-y-6 mb-8">
+                                <div className="flex items-start gap-4">
+                                    <Calendar className="w-6 h-6 text-primary mt-1" />
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Date & Time</p>
+                                        <p className="font-semibold text-white">
+                                            {new Date(event.dateTime).toLocaleString('en-US', { weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' })}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-4">
+                                    <MapPin className="w-6 h-6 text-primary mt-1" />
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Venue</p>
+                                        <p className="font-semibold text-white">{event.venue}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-4">
+                                    <Users className="w-6 h-6 text-primary mt-1" />
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Team Size</p>
+                                        <p className="font-semibold text-white">
+                                            {event.teamSize === 1 ? 'Individual Entry' : `${event.teamSize} Members / Team`}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-4">
+                                    <DollarSign className="w-6 h-6 text-primary mt-1" />
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Registration Fee</p>
+                                        <p className="font-semibold text-white">
+                                            {event.price === 0 ? 'Free' : `₹${event.price}`}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <RegisterButton eventId={event._id} isRegistered={isRegistered} />
+
+                                {event.whatsappLink && (
+                                    <a
+                                        href={event.whatsappLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-full flex items-center justify-center gap-2 bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/20 py-3 rounded-lg font-bold hover:bg-[#25D366]/20 transition-all"
+                                    >
+                                        Join WhatsApp Group
+                                    </a>
+                                )}
+                            </div>
+
+                            <div className="mt-8 pt-6 border-t border-white/10">
+                                <h4 className="text-sm font-semibold text-white mb-4">Event Coordinator</h4>
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/10 p-2 rounded-full">
+                                        <User className="w-5 h-5 text-secondary" />
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-white">{event.coordinatorName}</p>
+                                        <p className="text-sm text-muted-foreground">{event.coordinatorPhone}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </PageContainer>
+        </div>
+    );
+}
