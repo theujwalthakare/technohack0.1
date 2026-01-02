@@ -1,8 +1,9 @@
 "use server"
 
 import { connectToDatabase } from "@/lib/db"
-import { User, Registration } from "@/lib/models/user.model"
+import { User } from "@/lib/models/user.model"
 import Event from "@/lib/models/event.model"
+import Registration from "@/lib/models/registration.model"
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"

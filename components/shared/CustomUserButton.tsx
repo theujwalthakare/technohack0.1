@@ -3,7 +3,7 @@
 import { useUser, useClerk } from "@clerk/nextjs"
 import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
-import { User, LogOut, Settings, LayoutDashboard, ChevronDown } from "lucide-react"
+import { User, LogOut, Settings, LayoutDashboard, ChevronDown, Shield } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 export function CustomUserButton() {
@@ -103,6 +103,15 @@ export function CustomUserButton() {
 
                             {/* Menu Items */}
                             <div className="py-2">
+                                <Link
+                                    href="/admin"
+                                    onClick={() => setIsOpen(false)}
+                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-cyan-500/10 transition-all duration-200 group"
+                                >
+                                    <Shield className="w-4 h-4 text-cyan-400 group-hover:text-cyan-300" />
+                                    <span>Admin Panel</span>
+                                </Link>
+
                                 <Link
                                     href="/dashboard"
                                     onClick={() => setIsOpen(false)}

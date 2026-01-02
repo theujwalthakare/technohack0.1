@@ -14,29 +14,43 @@ const UserSchema = new Schema({
     course: { type: String },
     year: { type: String },
 
-    createdAt: { type: Date, default: Date.now }
+    // Admin & Roles
+    role: {
+        type: String,
+        enum: ['user', 'admin', 'superadmin'],
+        default: 'user',
+        index: true
+    },
+    permissions: [{ type: String }], // e.g., ['manage_events', 'manage_users']
+
+    // Security & Tracking
+    lastLogin: { type: Date },
+    loginCount: { type: Number, default: 0 },
+    isActive: { type: Boolean, default: true },
+    isBanned: { type: Boolean, default: false },
+    bannedAt: { type: Date },
+    bannedReason: { type: String },
+
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
+
+// Virtual for checking if user is admin
+UserSchema.virtual('isAdmin').get(function () {
+    return this.role === 'admin' || this.role === 'superadmin';
+});
+
+// Virtual for checking if user is superadmin
+UserSchema.virtual('isSuperAdmin').get(function () {
+    return this.role === 'superadmin';
+});
+
+// Update timestamp on save
+UserSchema.pre('save', function () {
+    this.updatedAt = new Date();
 });
 
 const User = models.User || model("User", UserSchema);
 
-// --- Registration Schema ---
-const RegistrationSchema = new Schema({
-    eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true, index: true },
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    clerkId: { type: String, required: true },
-
-    eventTitle: { type: String }, // Denormalized for simpler UI
-    eventImage: { type: String }, // Denormalized
-
-    status: { type: String, enum: ['REGISTERED', 'CANCELLED', 'ATTENDED'], default: 'REGISTERED' },
-    teamMembers: [{ type: String }],
-
-    registeredAt: { type: Date, default: Date.now }
-});
-
-// Prevent duplicate
-RegistrationSchema.index({ eventId: 1, userId: 1 }, { unique: true });
-
-const Registration = models.Registration || model("Registration", RegistrationSchema);
-
-export { User, Registration };
+// Export just the User model
+export { User };

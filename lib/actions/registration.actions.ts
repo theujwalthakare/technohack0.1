@@ -4,6 +4,7 @@ import { connectToDatabase } from "@/lib/db"
 import Registration from "@/lib/models/registration.model"
 import Event from "@/lib/models/event.model"
 import { Registration as RegistrationType } from "@/lib/models/registration.model"
+import { Event as IEvent } from "@/lib/models/event.model"
 
 // Register for an event
 export async function registerForEvent(data: {
@@ -99,10 +100,14 @@ export async function cancelRegistration(userId: string, eventId: string) {
         }
 
         return { success: true };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
 }
+
+
+
+// ... imports
 
 // Get registration stats for dashboard
 export async function getUserStats(userId: string) {
@@ -113,12 +118,12 @@ export async function getUserStats(userId: string) {
 
         const now = new Date();
         const upcoming = registrations.filter(r => {
-            const event = r.eventId as any;
+            const event = r.eventId as unknown as IEvent;
             return event && new Date(event.dateTime) > now && r.status === "confirmed";
         });
 
         const completed = registrations.filter(r => {
-            const event = r.eventId as any;
+            const event = r.eventId as unknown as IEvent;
             return event && new Date(event.dateTime) <= now;
         });
 
