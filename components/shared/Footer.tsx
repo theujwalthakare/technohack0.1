@@ -5,9 +5,9 @@ import Image from "next/image"
 import { Instagram, Linkedin, Mail, MapPin, Phone } from "lucide-react"
 
 const socialLinks = [
-    { icon: Instagram, href: "https://instagram.com/technohack2026", label: "Instagram", color: "hover:text-pink-400" },
-    { icon: Linkedin, href: "https://linkedin.com/company/technohack", label: "LinkedIn", color: "hover:text-blue-400" },
-    { icon: Mail, href: "mailto:support@technohack.org", label: "Email", color: "hover:text-cyan-400" }
+    { icon: Instagram, href: "https://www.instagram.com/kvn_naik_bca_bsc_compsci/", label: "Instagram", color: "hover:text-pink-400" },
+    { icon: Linkedin, href: "https://www.kvnacs.org/", label: "LinkedIn", color: "hover:text-blue-400" },
+    { icon: Mail, href: "mailto:urbanninjasx@gmail.com", label: "Email", color: "hover:text-cyan-400" }
 ]
 
 const quickLinks = [

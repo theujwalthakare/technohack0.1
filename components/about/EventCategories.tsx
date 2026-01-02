@@ -27,7 +27,7 @@ export function EventCategories() {
                         Event Categories
                     </h2>
                     <p className="text-gray-400">
-                        11 exciting events across 7 diverse categories
+                        10 exciting events across 6 diverse categories
                     </p>
                 </motion.div>
 
