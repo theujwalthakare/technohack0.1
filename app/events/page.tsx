@@ -5,8 +5,9 @@ import { Calendar, MapPin, Users, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { EventCard } from "@/components/events/EventCard";
 
-// Revalidate every 60 seconds
-export const revalidate = 60;
+// Force dynamic rendering to avoid MongoDB connection during build
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function EventsPage() {
     const events = await getAllEvents();
