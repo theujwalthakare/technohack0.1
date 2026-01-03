@@ -41,7 +41,7 @@ export default async function RegistrationsPage() {
         getUserStats(userId)
     ])
 
-    const totalDue = registrations.reduce((sum, reg) => sum + (reg.amountPaid ?? 0), 0)
+    const totalDue = registrations.reduce((sum: number, reg: RegistrationWithEvent) => sum + (reg.amountPaid ?? 0), 0)
 
     return (
         <div className="pb-16">
