@@ -8,17 +8,28 @@ import { auth, currentUser } from "@clerk/nextjs/server"
 import { User } from "@/lib/models/user.model"
 
 type TeamMemberInput = { name?: string; email?: string; phone?: string }
+type PaymentModeInput = "upi" | "cash"
+
+type RegisterPayload = {
+    eventId: string
+    teamName?: string
+    teamMembers?: TeamMemberInput[]
+    paymentMode: PaymentModeInput
+    transactionReference?: string
+    paymentProof?: string
+}
+
+const MAX_PAYMENT_PROOF_BYTES = 5 * 1024 * 1024
 
 // Register the currently authenticated user for an event
 export async function registerCurrentUserForEvent({
     eventId,
     teamName,
-    teamMembers = []
-}: {
-    eventId: string
-    teamName?: string
-    teamMembers?: TeamMemberInput[]
-}) {
+    teamMembers = [],
+    paymentMode,
+    transactionReference,
+    paymentProof
+}: RegisterPayload) {
     const { userId: clerkId } = await auth()
     if (!clerkId) {
         return { success: false, message: "Unauthorized" }
@@ -49,6 +60,25 @@ export async function registerCurrentUserForEvent({
             return { success: false, message: "Event not found" }
         }
 
+        if (!teamName?.trim() && event.teamSize > 1) {
+            return { success: false, message: "Team name is required for this event" }
+        }
+
+        if (!["upi", "cash"].includes(paymentMode)) {
+            return { success: false, message: "Invalid payment mode" }
+        }
+
+        const rawPrice = typeof event.price === "number" ? event.price : Number(event.price ?? 0)
+        if (!Number.isFinite(rawPrice) || rawPrice < 0) {
+            return { success: false, message: "Event pricing is misconfigured. Please contact the organizers." }
+        }
+
+        const normalizedAmount = Number(rawPrice.toFixed(2))
+
+        if (event.price > 0 && normalizedAmount <= 0) {
+            return { success: false, message: "Paid events require a non-zero amount" }
+        }
+
         const alreadyRegistered = await Registration.findOne({ userId: clerkId, eventId: event._id })
         if (alreadyRegistered) {
             return { success: false, message: "Already registered for this event" }
@@ -62,15 +92,53 @@ export async function registerCurrentUserForEvent({
             }))
             .filter(member => member.name || member.email || member.phone)
 
+        const maxTeamMembers = Math.max(event.teamSize - 1, 0)
+        const limitedTeamMembers = sanitizedTeamMembers.slice(0, maxTeamMembers)
+
+        let paymentProofUrl: string | undefined
+        if (paymentProof) {
+            if (!paymentProof.startsWith("data:image")) {
+                return { success: false, message: "Payment proof must be an image" }
+            }
+
+            const [, base64Payload] = paymentProof.split(",")
+            if (!base64Payload) {
+                return { success: false, message: "Payment proof is invalid" }
+            }
+
+            const proofSize = Buffer.from(base64Payload, "base64").length
+            if (proofSize > MAX_PAYMENT_PROOF_BYTES) {
+                return { success: false, message: "Payment proof must be under 5MB" }
+            }
+            paymentProofUrl = paymentProof
+        }
+
+        const normalizedReference = (transactionReference ?? "").trim()
+        const normalizedTeamName = event.teamSize > 1 ? teamName?.trim() : undefined
+
+        if (paymentMode === "upi" && !normalizedReference) {
+            return { success: false, message: "Transaction reference is required for UPI payments" }
+        }
+
+        let cashCode: string | undefined
+        if (paymentMode === "cash") {
+            cashCode = await generateUniqueCashCode()
+        }
+
         const registration = await Registration.create({
             userId: clerkId,
             eventId: event._id,
             userName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
             userEmail: user.email,
-            teamName: teamName?.trim() || undefined,
-            teamMembers: sanitizedTeamMembers,
+            teamName: normalizedTeamName,
+            teamMembers: event.teamSize > 1 ? limitedTeamMembers : undefined,
             status: "confirmed",
-            paymentStatus: "pending"
+            paymentStatus: "pending",
+            paymentMode,
+            amountPaid: normalizedAmount,
+            transactionReference: paymentMode === "upi" ? normalizedReference : cashCode,
+            cashCode,
+            paymentProofUrl
         })
 
         return {
@@ -82,6 +150,18 @@ export async function registerCurrentUserForEvent({
         const message = error instanceof Error ? error.message : "Registration failed"
         return { success: false, message }
     }
+}
+
+async function generateUniqueCashCode(maxAttempts = 8): Promise<string> {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        const candidate = Math.floor(100000 + Math.random() * 900000).toString()
+        const existing = await Registration.findOne({ cashCode: candidate }, { _id: 1 }).lean()
+        if (!existing) {
+            return candidate
+        }
+    }
+
+    throw new Error("Unable to generate a unique cash reference code. Please try again.")
 }
 
 // Get user's registrations

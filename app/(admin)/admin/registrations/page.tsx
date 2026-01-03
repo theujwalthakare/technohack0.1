@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { getAdminRegistrations, type AdminRegistrationEntry } from "@/lib/actions/admin.actions";
+import { PaymentStatusControls } from "@/components/admin/PaymentStatusControls";
+import { getAdminRegistrations, type AdminRegistrationEntry, type PaymentStatus } from "@/lib/actions/admin.actions";
 import { Activity, AlertTriangle, CheckCircle2, Clock3, ReceiptIndianRupee } from "lucide-react";
 
 const currencyFormatter = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 0
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
 });
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -26,16 +28,16 @@ export default async function AdminRegistrationsPage() {
             accent: "from-cyan-500/60 via-blue-500/10 to-transparent"
         },
         {
-            label: "Confirmed",
-            value: stats.confirmed,
-            description: "Status: confirmed",
+            label: "Verified Payments",
+            value: stats.paid,
+            description: "Marked as completed",
             icon: <CheckCircle2 className="w-5 h-5" />,
             accent: "from-emerald-500/60 via-teal-500/10 to-transparent"
         },
         {
-            label: "Pending",
-            value: stats.pending,
-            description: "Awaiting review or payment",
+            label: "Pending Payments",
+            value: stats.pendingPayments,
+            description: "Awaiting verification",
             icon: <Clock3 className="w-5 h-5" />,
             accent: "from-amber-500/60 via-orange-500/10 to-transparent"
         },
@@ -122,15 +124,15 @@ function PaymentStat({ label, value, accent }: { label: string; value: number; a
 
 function RegistrationsTable({ registrations }: { registrations: AdminRegistrationEntry[] }) {
     return (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[70vh] overflow-y-auto rounded-2xl">
             <table className="w-full text-sm">
                 <thead className="bg-white/5 text-xs uppercase tracking-wider text-gray-400">
                     <tr>
                         <th className="px-4 py-3 text-left">Event</th>
                         <th className="px-4 py-3 text-left">Participant</th>
                         <th className="px-4 py-3 text-left">Status</th>
-                        <th className="px-4 py-3 text-left">Payment</th>
-                        <th className="px-4 py-3 text-right">Amount</th>
+                        <th className="px-4 py-3 text-left">Payment Details</th>
+                        <th className="px-4 py-3 text-right">Fee</th>
                         <th className="px-4 py-3 text-right">Registered</th>
                     </tr>
                 </thead>
@@ -144,7 +146,7 @@ function RegistrationsTable({ registrations }: { registrations: AdminRegistratio
                     )}
                     {registrations.map((registration) => (
                         <tr key={registration.id} className="hover:bg-white/5 transition-colors">
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-4 align-top">
                                 <div className="flex flex-col">
                                     <span className="text-white font-semibold">{registration.eventTitle}</span>
                                     <span className="text-xs text-gray-400">{registration.eventCategory}</span>
@@ -155,23 +157,58 @@ function RegistrationsTable({ registrations }: { registrations: AdminRegistratio
                                     )}
                                 </div>
                             </td>
-                            <td className="px-4 py-4 text-gray-300">
+                            <td className="px-4 py-4 text-gray-300 align-top">
                                 <p className="font-semibold text-white">{registration.userName}</p>
                                 <p className="text-xs text-gray-400">{registration.userEmail}</p>
                                 {registration.teamName && (
                                     <p className="text-xs text-gray-500">Team: {registration.teamName} ({registration.teamSize})</p>
                                 )}
                             </td>
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-4 align-top">
                                 <StatusBadge status={registration.status} />
                             </td>
-                            <td className="px-4 py-4">
-                                <PaymentBadge status={registration.paymentStatus} />
+                            <td className="px-4 py-4 align-top">
+                                <div className="space-y-2 text-xs text-gray-300">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <PaymentBadge status={registration.paymentStatus} />
+                                        <span className="rounded-full border border-white/15 px-2 py-0.5 text-[11px] uppercase tracking-wide text-white/70">
+                                            {formatPaymentMode(registration.paymentMode)}
+                                        </span>
+                                    </div>
+                                    <p className="text-gray-400">
+                                        <span className="text-white/80 font-semibold">Paid:</span> {currencyFormatter.format(registration.amountPaid)}
+                                    </p>
+                                    <p className="text-gray-400 break-all">
+                                        <span className="text-white/80 font-semibold">Reference:</span> {registration.paymentMode === "upi" ? (registration.transactionReference || "—") : "Cash submissions auto-generate codes"}
+                                    </p>
+                                    {registration.paymentMode === "cash" && (
+                                        <p className="text-amber-200 break-all">
+                                            <span className="text-white/80 font-semibold">Cash Code:</span> {registration.cashCode || "—"}
+                                        </p>
+                                    )}
+                                    {registration.paymentProofUrl ? (
+                                        <a
+                                            href={registration.paymentProofUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            download={`payment-proof-${registration.id}.png`}
+                                            className="text-[11px] text-cyan-300 hover:text-cyan-200"
+                                        >
+                                            View proof ↗
+                                        </a>
+                                    ) : (
+                                        <p className="text-[11px] text-gray-500">No proof uploaded</p>
+                                    )}
+                                    <PaymentStatusControls
+                                        registrationId={registration.id}
+                                        paymentStatus={registration.paymentStatus}
+                                    />
+                                </div>
                             </td>
-                            <td className="px-4 py-4 text-right text-white font-semibold">
+                            <td className="px-4 py-4 text-right text-white font-semibold align-top">
                                 {currencyFormatter.format(registration.amount)}
                             </td>
-                            <td className="px-4 py-4 text-right text-gray-300">
+                            <td className="px-4 py-4 text-right text-gray-300 align-top">
                                 {formatDate(registration.registeredAt)}
                             </td>
                         </tr>
@@ -201,25 +238,25 @@ function StatusBadge({ status }: { status?: string }) {
     );
 }
 
-function PaymentBadge({ status }: { status?: string }) {
-    const palette: Record<string, string> = {
+function PaymentBadge({ status }: { status?: PaymentStatus }) {
+    const palette: Record<PaymentStatus, string> = {
         completed: "bg-emerald-500/20 text-emerald-200",
         pending: "bg-amber-500/20 text-amber-200",
         failed: "bg-rose-500/20 text-rose-200"
     };
-    const iconMap: Record<string, ReactNode> = {
+    const iconMap: Record<PaymentStatus, ReactNode> = {
         completed: <CheckCircle2 className="w-3.5 h-3.5" />,
         pending: <Clock3 className="w-3.5 h-3.5" />,
         failed: <AlertTriangle className="w-3.5 h-3.5" />
     };
 
-    const normalized = status || "pending";
-    const color = palette[normalized] ?? "bg-white/10 text-white";
+    const normalized: PaymentStatus = status ?? "pending";
+    const color = palette[normalized];
     const label = normalized.charAt(0).toUpperCase() + normalized.slice(1);
 
     return (
         <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${color}`}>
-            {iconMap[normalized] ?? <AlertTriangle className="w-3.5 h-3.5" />}
+            {iconMap[normalized]}
             {label}
         </span>
     );
@@ -228,4 +265,9 @@ function PaymentBadge({ status }: { status?: string }) {
 function formatDate(input?: string) {
     if (!input) return "—";
     return dateFormatter.format(new Date(input));
+}
+
+function formatPaymentMode(mode?: string) {
+    if (mode === "cash") return "Cash";
+    return "UPI";
 }

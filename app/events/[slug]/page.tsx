@@ -1,10 +1,12 @@
 import { getEventBySlug } from "@/lib/actions/event.actions";
 import { getRegistrationStatus } from "@/lib/actions/user.actions";
+import { getPaymentSettings } from "@/lib/actions/settings.actions";
 import { PageContainer } from "@/components/shared/PageContainer";
 import { Calendar, MapPin, Users, User, DollarSign } from "lucide-react";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { RegisterButton } from "@/components/events/RegisterButton";
+import { MobileActionBar } from "@/components/shared/MobileActionBar";
 
 // Dynamic metadata
 export async function generateMetadata({ params }: { params: { slug: string } }) {
@@ -29,16 +31,18 @@ export default async function EventDetailsPage({ params }: { params: { slug: str
     // Check registration status
     const registration = await getRegistrationStatus(event._id);
     const isRegistered = !!registration;
+    const paymentSettings = await getPaymentSettings();
 
     return (
-        <div className="min-h-screen bg-background pb-20">
+        <div className="min-h-screen bg-background pb-32 lg:pb-20">
             {/* Hero Header */}
-            <div className="relative h-[50vh] w-full">
+            <div className="relative h-[45vh] md:h-[60vh] w-full">
                 <Image
                     src={event.image}
                     alt={event.title}
                     fill
                     className="object-cover"
+                    sizes="100vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
 
@@ -54,7 +58,7 @@ export default async function EventDetailsPage({ params }: { params: { slug: str
                 </div>
             </div>
 
-            <PageContainer>
+            <PageContainer className="pt-10 lg:pt-16">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
 
                     {/* Main Content */}
@@ -83,7 +87,7 @@ export default async function EventDetailsPage({ params }: { params: { slug: str
 
                     {/* Sidebar / Info Card */}
                     <div className="space-y-6">
-                        <div className="bg-card border border-white/10 rounded-xl p-6 sticky top-24">
+                        <div className="bg-card border border-white/10 rounded-xl p-6 lg:sticky lg:top-24">
                             <div className="space-y-6 mb-8">
                                 <div className="flex items-start gap-4">
                                     <Calendar className="w-6 h-6 text-primary mt-1" />
@@ -125,7 +129,13 @@ export default async function EventDetailsPage({ params }: { params: { slug: str
                             </div>
 
                             <div className="space-y-4">
-                                <RegisterButton eventId={event._id} isRegistered={isRegistered} />
+                                <div className="hidden lg:block">
+                                    <RegisterButton
+                                        event={{ _id: event._id, title: event.title, teamSize: event.teamSize, price: event.price }}
+                                        isRegistered={isRegistered}
+                                        paymentSettings={paymentSettings}
+                                    />
+                                </div>
 
                                 {event.whatsappLink && (
                                     <a
@@ -156,6 +166,28 @@ export default async function EventDetailsPage({ params }: { params: { slug: str
 
                 </div>
             </PageContainer>
+
+            <MobileActionBar
+                title="Ready to participate?"
+                subtitle={event.price === 0 ? "Free entry" : `Registration fee • ₹${event.price}`}
+            >
+                <div className="flex items-center gap-4">
+                    <div className="flex flex-col text-white/90">
+                        <span className="text-[11px] uppercase tracking-[0.3em] text-gray-400">Team Size</span>
+                        <span className="text-lg font-semibold">{event.teamSize === 1 ? "Solo" : `${event.teamSize} Members`}</span>
+                    </div>
+                    <div className="flex-1">
+                        <RegisterButton
+                            event={{ _id: event._id, title: event.title, teamSize: event.teamSize, price: event.price }}
+                            isRegistered={isRegistered}
+                            paymentSettings={paymentSettings}
+                            variant="compact"
+                            className="w-full"
+                            buttonLabel={isRegistered ? "Registered" : "Register"}
+                        />
+                    </div>
+                </div>
+            </MobileActionBar>
         </div>
     );
 }

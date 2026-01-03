@@ -41,6 +41,9 @@ export type AdminAnalyticsPayload = {
     dailyRegistrations: DailyRegistrationPoint[];
 }
 
+export type PaymentStatus = "pending" | "completed" | "failed"
+export type AdminPaymentMode = "upi" | "cash"
+
 export type AdminUserRecord = {
     id: string;
     name: string;
@@ -76,7 +79,12 @@ export type AdminRegistrationEntry = {
     userName: string;
     userEmail: string;
     status: string;
-    paymentStatus: string;
+    paymentStatus: PaymentStatus;
+    paymentMode: AdminPaymentMode;
+    amountPaid: number;
+    transactionReference?: string;
+    cashCode?: string;
+    paymentProofUrl?: string;
     registeredAt: string;
     eventDate?: string;
     venue?: string;
@@ -359,7 +367,12 @@ export async function getAdminRegistrations(limit = 150): Promise<AdminRegistrat
             userName: reg.userName,
             userEmail: reg.userEmail,
             status: reg.status,
-            paymentStatus: reg.paymentStatus,
+            paymentStatus: (reg.paymentStatus ?? "pending") as PaymentStatus,
+            paymentMode: (reg.paymentMode ?? "upi") as AdminPaymentMode,
+            amountPaid: typeof reg.amountPaid === "number" ? reg.amountPaid : (typeof eventDoc?.price === "number" ? eventDoc.price : 0),
+            transactionReference: reg.transactionReference ?? undefined,
+            cashCode: reg.cashCode ?? undefined,
+            paymentProofUrl: reg.paymentProofUrl ?? undefined,
             registeredAt: reg.registeredAt ? new Date(reg.registeredAt).toISOString() : new Date().toISOString(),
             eventDate: eventDoc?.dateTime ? new Date(eventDoc.dateTime).toISOString() : undefined,
             venue: eventDoc?.venue,
@@ -618,4 +631,38 @@ export async function getAdminAnalytics(): Promise<AdminAnalyticsPayload> {
         categoryDistribution,
         dailyRegistrations
     };
+}
+
+export async function updateRegistrationPaymentStatus({
+    registrationId,
+    paymentStatus
+}: {
+    registrationId: string;
+    paymentStatus: PaymentStatus;
+}) {
+    await checkAdmin();
+    await connectToDatabase();
+
+    if (!registrationId) {
+        return { success: false, message: "Missing registration" };
+    }
+
+    if (!["pending", "completed", "failed"].includes(paymentStatus)) {
+        return { success: false, message: "Invalid payment status" };
+    }
+
+    const updated = await Registration.findByIdAndUpdate(
+        registrationId,
+        { paymentStatus, updatedAt: new Date() },
+        { new: true }
+    );
+
+    if (!updated) {
+        return { success: false, message: "Registration not found" };
+    }
+
+    revalidatePath("/admin/registrations");
+    revalidatePath("/admin/analytics");
+
+    return { success: true };
 }

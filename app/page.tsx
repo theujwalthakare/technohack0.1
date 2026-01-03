@@ -6,6 +6,7 @@ import { SchedulePreview } from "@/components/home/SchedulePreview"
 import { WhyParticipate } from "@/components/home/WhyParticipate"
 import { SponsorsStrip } from "@/components/home/SponsorsStrip"
 import { FinalCTA } from "@/components/home/FinalCTA"
+import { MobileActionBar } from "@/components/shared/MobileActionBar"
 
 export default function Home() {
   return (
@@ -33,6 +34,15 @@ export default function Home() {
 
       {/* 8. Final CTA - Last Push */}
       <FinalCTA />
+
+      <MobileActionBar
+        title="On your phone?"
+        subtitle="Jump straight to the full events list or check the live schedule."
+        actions={[
+          { label: "Browse Events", href: "/events" },
+          { label: "View Schedule", href: "/schedule", variant: "secondary" }
+        ]}
+      />
     </div>
   )
 }

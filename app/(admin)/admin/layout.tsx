@@ -9,7 +9,8 @@ import {
     Settings,
     Shield,
     BarChart3,
-    UserCog
+    UserCog,
+    IndianRupee
 } from "lucide-react"
 import React from "react"
 import { AdminActionToast } from "@/components/admin/AdminActionToast"
@@ -77,6 +78,11 @@ export default async function AdminLayout({
                             href="/admin/registrations"
                             icon={<FileText size={20} />}
                             label="Registrations"
+                        />
+                        <NavLink
+                            href="/admin/payment-settings"
+                            icon={<IndianRupee size={20} />}
+                            label="Payment Settings"
                         />
                     </NavSection>
 

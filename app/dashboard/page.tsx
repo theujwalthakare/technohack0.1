@@ -23,7 +23,19 @@ type RegistrationEntry = {
         dateTime: string
         venue: string
     } | null
+    paymentStatus?: string
+    paymentMode?: "upi" | "cash"
+    amountPaid?: number
+    transactionReference?: string
+    cashCode?: string
 }
+
+const currencyFormatter = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+})
 
 export default function DashboardPage() {
     const { user } = useUser()
@@ -210,11 +222,34 @@ export default function DashboardPage() {
                                                             {event.venue}
                                                         </div>
                                                     </div>
-                                                    {reg.teamName && (
-                                                        <div className="mt-3 pt-3 border-t border-cyan-500/20">
+                                                    <div className="mt-3 pt-3 border-t border-cyan-500/20 space-y-2">
+                                                        {reg.teamName && (
                                                             <p className="text-sm text-cyan-400">Team: {reg.teamName}</p>
+                                                        )}
+                                                        <div className="flex flex-wrap gap-4 text-xs text-gray-400">
+                                                            <span className="uppercase tracking-wider">
+                                                                Mode: <span className="text-white font-semibold">{reg.paymentMode === "cash" ? "Cash" : "UPI"}</span>
+                                                            </span>
+                                                            <span className="uppercase tracking-wider">
+                                                                Payment Status: <span className="text-white font-semibold">{(reg.paymentStatus ?? "pending").toUpperCase()}</span>
+                                                            </span>
+                                                            <span className="uppercase tracking-wider">
+                                                                Paid: <span className="text-white font-semibold">{currencyFormatter.format(reg.amountPaid ?? 0)}</span>
+                                                            </span>
                                                         </div>
-                                                    )}
+                                                        {reg.paymentMode === "upi" && reg.transactionReference && (
+                                                            <p className="text-xs text-gray-400 border border-white/10 rounded-md px-3 py-2 bg-white/5">
+                                                                <span className="font-semibold text-white/80">UPI Reference:</span> {reg.transactionReference}
+                                                            </p>
+                                                        )}
+                                                        {reg.paymentMode === "cash" && reg.cashCode && (
+                                                            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+                                                                <p className="text-[11px] uppercase tracking-[0.3em] text-amber-200">Cash Code</p>
+                                                                <p className="text-2xl font-black font-mono text-white tracking-[0.2em]">{reg.cashCode}</p>
+                                                                <p className="text-xs text-amber-100/80 mt-1">Show this code when you pay at the help desk.</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </motion.div>
                                         )

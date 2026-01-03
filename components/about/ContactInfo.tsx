@@ -28,7 +28,7 @@ const contactDetails = [
 
 export function ContactInfo() {
     return (
-        <section className="py-12 bg-background">
+        <section id="contact" className="py-12 bg-background">
             <div className="max-w-6xl mx-auto px-4">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}

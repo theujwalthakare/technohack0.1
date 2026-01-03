@@ -1,6 +1,7 @@
 import { getAllEvents } from "@/lib/actions/event.actions";
 import { PageContainer } from "@/components/shared/PageContainer";
 import { EventCard } from "@/components/events/EventCard";
+import { MobileActionBar } from "@/components/shared/MobileActionBar";
 
 // Force dynamic rendering to avoid MongoDB connection during build
 export const dynamic = 'force-dynamic';
@@ -10,7 +11,7 @@ export default async function EventsPage() {
     const events = await getAllEvents();
 
     return (
-        <div className="min-h-screen bg-background py-20">
+        <div className="min-h-screen bg-background pb-32 lg:pb-20 pt-10">
             <PageContainer>
                 <div className="mb-12 text-center">
                     <h1 className="text-4xl md:text-6xl font-bold font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary mb-4">
@@ -37,6 +38,15 @@ export default async function EventsPage() {
                     )}
                 </div>
             </PageContainer>
+
+            <MobileActionBar
+                title="Need help choosing?"
+                subtitle="Filter by category on desktop or tap schedule for timing details."
+                actions={[
+                    { label: "View Schedule", href: "/schedule" },
+                    { label: "Contact Team", href: "/about", variant: "secondary" }
+                ]}
+            />
         </div>
     );
 }

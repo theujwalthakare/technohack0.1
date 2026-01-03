@@ -1,10 +1,11 @@
 import { ScheduleHero } from "@/components/schedule/ScheduleHero"
 import { DayTimeline } from "@/components/schedule/DayTimeline"
 import { scheduleData } from "@/lib/config/scheduleData"
+import { MobileActionBar } from "@/components/shared/MobileActionBar"
 
 export default function SchedulePage() {
     return (
-        <div className="flex flex-col">
+        <div className="flex flex-col pb-32 lg:pb-0">
             {/* Hero Section */}
             <ScheduleHero />
 
@@ -35,6 +36,15 @@ export default function SchedulePage() {
                     </div>
                 </div>
             </section>
+
+            <MobileActionBar
+                title="Ready to register?"
+                subtitle="Lock in your spot for the events you just bookmarked."
+                actions={[
+                    { label: "Browse Events", href: "/events" },
+                    { label: "Dashboard", href: "/dashboard", variant: "secondary" }
+                ]}
+            />
         </div>
     )
 }

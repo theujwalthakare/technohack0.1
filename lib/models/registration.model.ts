@@ -27,7 +27,19 @@ const RegistrationSchema = new Schema({
         enum: ["pending", "completed", "failed"],
         default: "pending"
     },
-    transactionId: { type: String },
+    paymentMode: {
+        type: String,
+        enum: ["upi", "cash"],
+        required: true
+    },
+    amountPaid: {
+        type: Number,
+        min: 0,
+        required: true
+    },
+    transactionReference: { type: String },
+    paymentProofUrl: { type: String },
+    cashCode: { type: String },
 
     // Metadata
     registeredAt: { type: Date, default: Date.now },
@@ -38,6 +50,7 @@ const RegistrationSchema = new Schema({
 RegistrationSchema.index({ userId: 1, eventId: 1 }, { unique: true });
 RegistrationSchema.index({ eventId: 1 });
 RegistrationSchema.index({ registeredAt: 1 });
+RegistrationSchema.index({ cashCode: 1 }, { unique: true, sparse: true });
 
 // TypeScript Interface
 export interface Registration {
@@ -54,7 +67,11 @@ export interface Registration {
     }>;
     status: "pending" | "confirmed" | "cancelled" | "waitlist";
     paymentStatus: "pending" | "completed" | "failed";
-    transactionId?: string;
+    paymentMode: "upi" | "cash";
+    amountPaid: number;
+    transactionReference?: string;
+    paymentProofUrl?: string;
+    cashCode?: string;
     registeredAt: Date;
     updatedAt: Date;
 }
