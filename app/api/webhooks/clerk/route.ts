@@ -59,8 +59,7 @@ export async function POST(req: Request) {
     if (eventType === 'session.created') {
         const userId = evt.data.user_id;
         if (userId) {
-            const client = await clerkClient();
-            const clerkUser = await client.users.getUser(userId);
+            const clerkUser = await clerkClient.users.getUser(userId);
             const payload = transformClerkPayload(clerkUser);
             const lastActive = timestampToDate(evt.data.last_active_at) ?? new Date();
             await createUser(payload, { trackLogin: true, lastLoginAt: lastActive });
