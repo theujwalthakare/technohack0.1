@@ -30,11 +30,12 @@ type EventsPageSearchParams = {
     status?: string;
 };
 
-export default async function AdminEventsPage({ searchParams }: { searchParams?: EventsPageSearchParams }) {
+export default async function AdminEventsPage({ searchParams }: { searchParams?: Promise<EventsPageSearchParams> }) {
     const events = await getAllEventsAdmin() as AdminEvent[];
+    const resolvedSearchParams = (await searchParams) ?? {};
     const filters = {
-        query: typeof searchParams?.query === "string" ? searchParams.query : "",
-        status: typeof searchParams?.status === "string" ? searchParams.status : "all"
+        query: typeof resolvedSearchParams?.query === "string" ? resolvedSearchParams.query : "",
+        status: typeof resolvedSearchParams?.status === "string" ? resolvedSearchParams.status : "all"
     };
 
     const filteredEvents = events.filter((event) => {
