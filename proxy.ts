@@ -18,7 +18,7 @@ const isAdminRoute = createRouteMatcher([
     '/admin(.*)'
 ]);
 
-export default clerkMiddleware(async (auth, request) => {
+const proxy = clerkMiddleware(async (auth, request) => {
     // Protect admin routes
     if (isAdminRoute(request)) {
         await auth.protect();
@@ -33,6 +33,8 @@ export default clerkMiddleware(async (auth, request) => {
         await auth.protect();
     }
 });
+
+export default proxy;
 
 export const config = {
     matcher: [
