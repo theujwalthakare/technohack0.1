@@ -13,6 +13,13 @@ const UserSchema = new Schema({
     phone: { type: String },
     course: { type: String },
     year: { type: String },
+    addressLine1: { type: String },
+    addressLine2: { type: String },
+    city: { type: String },
+    state: { type: String },
+    postalCode: { type: String },
+    country: { type: String },
+    bio: { type: String },
 
     // Admin & Roles
     role: {

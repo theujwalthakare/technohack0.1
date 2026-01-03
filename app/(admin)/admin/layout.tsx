@@ -10,7 +10,8 @@ import {
     Shield,
     BarChart3,
     UserCog,
-    IndianRupee
+    IndianRupee,
+    UserCircle
 } from "lucide-react"
 import React from "react"
 import { AdminActionToast } from "@/components/admin/AdminActionToast"
@@ -32,6 +33,7 @@ export default async function AdminLayout({
 
     const mobileNavLinks = [
         { href: "/admin", label: "Dashboard" },
+        { href: "/admin/profile", label: "Profile" },
         { href: "/admin/analytics", label: "Analytics" },
         { href: "/admin/events", label: "Events" },
         { href: "/admin/users", label: "Users" },
@@ -75,6 +77,11 @@ export default async function AdminLayout({
                             href="/admin/analytics"
                             icon={<BarChart3 size={20} />}
                             label="Analytics"
+                        />
+                        <NavLink
+                            href="/admin/profile"
+                            icon={<UserCircle size={20} />}
+                            label="Profile"
                         />
                     </NavSection>
 

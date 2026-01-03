@@ -2,12 +2,22 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Menu, X, User } from "lucide-react"
+import { Menu, X, User, LogOut } from "lucide-react"
 import { useState, useEffect } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { useUser } from "@clerk/nextjs"
+import { useUser, useClerk } from "@clerk/nextjs"
 import { CustomUserButton } from "@/components/shared/CustomUserButton"
+
+type RegistrationEntry = {
+    _id: string
+    status: string
+    eventId?: {
+        title: string
+        dateTime: string
+        venue: string
+    } | null
+}
 
 const navLinks = [
     { href: "/", label: "Home" },
@@ -21,8 +31,11 @@ export function Navbar() {
     const [isVisible, setIsVisible] = useState(true)
     const [lastScrollY, setLastScrollY] = useState(0)
     const [isAdmin, setIsAdmin] = useState(false)
+    const [recentRegistrations, setRecentRegistrations] = useState<RegistrationEntry[]>([])
     const pathname = usePathname()
+    const router = useRouter()
     const { isSignedIn } = useUser()
+    const { signOut } = useClerk()
 
     useEffect(() => {
         const handleScroll = () => {
@@ -52,6 +65,7 @@ export function Navbar() {
         if (!isSignedIn) {
             queueMicrotask(() => {
                 if (isMounted) setIsAdmin(false)
+                if (isMounted) setRecentRegistrations([])
             })
             return () => {
                 isMounted = false
@@ -71,6 +85,18 @@ export function Navbar() {
                 setIsAdmin(false)
             })
 
+        fetch("/api/me/registrations")
+            .then((response) => response.ok ? response.json() : null)
+            .then((data) => {
+                if (!isMounted) return
+                const regs: RegistrationEntry[] = data?.registrations ?? []
+                setRecentRegistrations(regs.slice(0, 3))
+            })
+            .catch(() => {
+                if (!isMounted) return
+                setRecentRegistrations([])
+            })
+
         return () => {
             isMounted = false
             controller.abort()
@@ -78,9 +104,24 @@ export function Navbar() {
     }, [isSignedIn])
 
     const showAdminLink = isSignedIn && isAdmin
-    const visibleLinks = showAdminLink
-        ? [...navLinks, { href: "/admin", label: "Admin" }]
+    const showDashboardLink = isSignedIn && !isAdmin
+
+    const userNavLinks = isSignedIn && !isAdmin
+        ? [...navLinks, { href: "/registrations", label: "My Events" }]
         : navLinks
+
+    const handleSignOut = async () => {
+        setIsOpen(false)
+        try {
+            await signOut({ redirectUrl: "/" })
+        } catch (error) {
+            console.error(error)
+            router.push("/")
+        }
+    }
+    const visibleLinks = showAdminLink
+        ? [...userNavLinks, { href: "/admin", label: "Admin" }]
+        : userNavLinks
 
     return (
         <nav className={cn(
@@ -186,12 +227,14 @@ export function Navbar() {
                             </Link>
                         )}
                         {isSignedIn ? (
-                            <Link
-                                href="/dashboard"
-                                className="px-3 py-1.5 text-xs font-semibold rounded-full border border-white/20 text-white/80 hover:text-white"
-                            >
-                                Dashboard
-                            </Link>
+                            showDashboardLink && (
+                                <Link
+                                    href="/dashboard"
+                                    className="px-3 py-1.5 text-xs font-semibold rounded-full border border-white/20 text-white/80 hover:text-white"
+                                >
+                                    Dashboard
+                                </Link>
+                            )
                         ) : (
                             <Link
                                 href="/sign-in"
@@ -199,6 +242,14 @@ export function Navbar() {
                             >
                                 Login
                             </Link>
+                        )}
+                        {isSignedIn && (
+                            <button
+                                onClick={handleSignOut}
+                                className="px-3 py-1.5 text-xs font-semibold rounded-full border border-red-400/40 text-red-200 hover:text-white hover:border-red-400/70 transition-colors"
+                            >
+                                Logout
+                            </button>
                         )}
                         <button
                             onClick={() => setIsOpen(!isOpen)}
@@ -239,15 +290,26 @@ export function Navbar() {
                     })}
 
                     {/* Mobile Auth */}
-                    <div className="pt-3 mt-3 border-t border-white/[0.08]">
+                    <div className="pt-3 mt-3 border-t border-white/[0.08] space-y-2">
                         {isSignedIn ? (
-                            <Link
-                                href="/dashboard"
-                                onClick={() => setIsOpen(false)}
-                                className="block px-4 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/[0.06] rounded-lg transition-all duration-200"
-                            >
-                                Dashboard
-                            </Link>
+                            <>
+                                {showDashboardLink && (
+                                    <Link
+                                        href="/dashboard"
+                                        onClick={() => setIsOpen(false)}
+                                        className="block px-4 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/[0.06] rounded-lg transition-all duration-200"
+                                    >
+                                        Dashboard
+                                    </Link>
+                                )}
+                                <button
+                                    onClick={handleSignOut}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-red-300 border border-red-400/30 rounded-lg hover:bg-red-500/10 transition-colors"
+                                >
+                                    <LogOut size={16} />
+                                    Logout
+                                </button>
+                            </>
                         ) : (
                             <Link
                                 href="/sign-in"
@@ -261,6 +323,35 @@ export function Navbar() {
                             </Link>
                         )}
                     </div>
+
+                    {isSignedIn && (
+                        <div className="mt-4 border-t border-white/[0.08] pt-3 space-y-2">
+                            <p className="text-[11px] uppercase tracking-[0.3em] text-white/50">My registrations</p>
+                            {recentRegistrations.length === 0 ? (
+                                <p className="text-xs text-white/50">No events yet. Tap "Events" to explore.</p>
+                            ) : (
+                                recentRegistrations.map((registration) => {
+                                    const event = registration.eventId
+                                    if (!event) return null
+                                    const dateLabel = event.dateTime ? new Date(event.dateTime).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Soon"
+                                    return (
+                                        <div key={registration._id} className="rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/80 bg-white/5">
+                                            <p className="font-semibold text-white">{event.title}</p>
+                                            <p className="text-xs text-white/60">{dateLabel} · {event.venue}</p>
+                                            <span className="mt-2 inline-flex text-[11px] uppercase tracking-[0.3em] text-white/70">{registration.status}</span>
+                                        </div>
+                                    )
+                                })
+                            )}
+                            <Link
+                                href="/registrations"
+                                onClick={() => setIsOpen(false)}
+                                className="inline-flex items-center gap-2 text-xs font-semibold text-cyan-300"
+                            >
+                                Open my events →
+                            </Link>
+                        </div>
+                    )}
                 </div>
             </div>
         </nav>

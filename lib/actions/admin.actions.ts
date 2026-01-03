@@ -182,16 +182,30 @@ export async function getAdminStats() {
     const events = await Event.countDocuments();
     const registrations = await Registration.countDocuments();
 
-    const recentRegistrations = await Registration.find({})
+    const recentRegistrationsDocs = await Registration.find({})
         .sort({ registeredAt: -1 })
         .limit(5)
+        .populate("eventId", "title category")
         .lean();
+
+    const recentRegistrations = recentRegistrationsDocs.map((entry) => {
+        const eventDoc = entry.eventId as { title?: string | null; category?: string | null } | undefined;
+        return {
+            id: entry._id.toString(),
+            eventTitle: eventDoc?.title ?? "Event",
+            eventCategory: eventDoc?.category ?? "General",
+            userName: entry.userName,
+            userEmail: entry.userEmail,
+            status: entry.status,
+            registeredAt: entry.registeredAt ? new Date(entry.registeredAt).toISOString() : new Date().toISOString()
+        };
+    });
 
     return {
         users,
         events,
         registrations,
-        recentRegistrations: JSON.parse(JSON.stringify(recentRegistrations))
+        recentRegistrations
     };
 }
 

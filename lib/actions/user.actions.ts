@@ -85,3 +85,81 @@ export async function getRegistrationStatus(eventId: string) {
 
     return registration ? { status: registration.status } : null;
 }
+
+type ProfileUpdateInput = {
+    firstName?: string | null;
+    lastName?: string | null;
+    imageUrl?: string | null;
+    phone?: string | null;
+    college?: string | null;
+    course?: string | null;
+    year?: string | null;
+    addressLine1?: string | null;
+    addressLine2?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
+    bio?: string | null;
+};
+
+const editableProfileFields: Array<keyof ProfileUpdateInput> = [
+    "firstName",
+    "lastName",
+    "imageUrl",
+    "phone",
+    "college",
+    "course",
+    "year",
+    "addressLine1",
+    "addressLine2",
+    "city",
+    "state",
+    "postalCode",
+    "country",
+    "bio",
+];
+
+function sanitizeInputValue(value: string | null | undefined) {
+    if (value === undefined) return undefined;
+    const normalized = typeof value === "string" ? value.trim() : value;
+    if (typeof normalized === "string" && normalized.length === 0) {
+        return null;
+    }
+    return normalized;
+}
+
+export async function getCurrentUserProfile() {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+        throw new Error("Not authenticated");
+    }
+
+    await connectToDatabase();
+    const user = await User.findOne({ clerkId }).lean();
+    return user ? JSON.parse(JSON.stringify(user)) : null;
+}
+
+export async function updateCurrentUserProfile(input: ProfileUpdateInput) {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+        throw new Error("Not authenticated");
+    }
+
+    await connectToDatabase();
+
+    const payload: Record<string, unknown> = { updatedAt: new Date() };
+    editableProfileFields.forEach((field) => {
+        if (Object.prototype.hasOwnProperty.call(input, field)) {
+            payload[field] = sanitizeInputValue(input[field]);
+        }
+    });
+
+    const updatedUser = await User.findOneAndUpdate(
+        { clerkId },
+        { $set: payload },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    return JSON.parse(JSON.stringify(updatedUser));
+}

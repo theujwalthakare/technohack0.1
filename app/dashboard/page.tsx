@@ -12,7 +12,13 @@ import {
     MapPin,
     Shield,
     BarChart3,
-    FileText
+    FileText,
+    UserCircle,
+    CalendarDays,
+    Ticket,
+    MessageCircle,
+    ListChecks,
+    Sparkles
 } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
@@ -174,6 +180,7 @@ export default function DashboardPage() {
                     <UserDashboardView
                         userName={user?.firstName ?? "Participant"}
                         userEmail={user?.primaryEmailAddress?.emailAddress ?? ""}
+                        rawStats={stats}
                         statsCards={statsCards}
                         registrations={registrations}
                         loading={loading}
@@ -184,33 +191,179 @@ export default function DashboardPage() {
     )
 }
 
-function UserDashboardView({ userName, userEmail, statsCards, registrations, loading }: {
+function UserDashboardView({ userName, userEmail, rawStats, statsCards, registrations, loading }: {
     userName: string
     userEmail: string
+    rawStats: DashboardStats
     statsCards: Array<{ label: string; value: string; icon: ComponentType<{ className?: string }>; color: string; borderColor: string }>
     registrations: RegistrationEntry[]
     loading: boolean
 }) {
+    const completionRatio = rawStats.total > 0 ? rawStats.completed / rawStats.total : 0
+    const progressPercent = Math.round(completionRatio * 100)
+
+    const statusBadgeClass = (status: string) => {
+        switch (status) {
+            case "confirmed":
+                return "border-emerald-500/40 text-emerald-200 bg-emerald-500/10"
+            case "pending":
+                return "border-amber-500/40 text-amber-200 bg-amber-500/10"
+            case "waitlist":
+                return "border-purple-500/40 text-purple-200 bg-purple-500/10"
+            default:
+                return "border-rose-500/40 text-rose-200 bg-rose-500/10"
+        }
+    }
+
+    const quickActions = useMemo(() => ([
+        {
+            title: "Explore events",
+            description: "Hand-picked challenges ready to join",
+            href: "/events",
+            icon: CalendarDays,
+            accent: "from-cyan-500 to-blue-500"
+        },
+        {
+            title: "Sync your schedule",
+            description: "Know exactly where to report",
+            href: "/schedule",
+            icon: ListChecks,
+            accent: "from-purple-500 to-pink-500"
+        },
+        {
+            title: "Ping the crew",
+            description: "Need support? We’re a DM away",
+            href: "mailto:support@technohack.com",
+            icon: MessageCircle,
+            accent: "from-emerald-500 to-teal-500"
+        }
+    ]), [])
+
+    const nextEvent = useMemo(() => {
+        const futureRegs = registrations.filter((reg) => {
+            const date = reg.eventId?.dateTime ? new Date(reg.eventId.dateTime) : null
+            return date ? date.getTime() > Date.now() : false
+        })
+        futureRegs.sort((a, b) => {
+            const aDate = a.eventId?.dateTime ? new Date(a.eventId.dateTime).getTime() : Infinity
+            const bDate = b.eventId?.dateTime ? new Date(b.eventId.dateTime).getTime() : Infinity
+            return aDate - bDate
+        })
+        return futureRegs[0] ?? null
+    }, [registrations])
+
+    const nextEventCountdown = useMemo(() => {
+        if (!nextEvent?.eventId?.dateTime) return null
+        const target = new Date(nextEvent.eventId.dateTime).getTime()
+        const diff = target - Date.now()
+        if (diff <= 0) return "Now live"
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+        return days > 0 ? `${days}d ${hours}h` : `${hours}h`
+    }, [nextEvent])
+
+    const timelineItems = useMemo(() => {
+        if (registrations.length === 0) {
+            return [
+                {
+                    id: "discover",
+                    title: "Discover flagship events",
+                    subtitle: "Save your first seat to unlock perks",
+                    status: "pending",
+                    meta: "Happening daily",
+                    venue: "Arena"
+                },
+                {
+                    id: "sync",
+                    title: "Sync your personal schedule",
+                    subtitle: "Add events to calendar & notify your squad",
+                    status: "pending",
+                    meta: "Next step",
+                    venue: "Dashboard"
+                },
+                {
+                    id: "collect",
+                    title: "Collect bonus points",
+                    subtitle: "Complete workshops to earn XP",
+                    status: "pending",
+                    meta: "Earn upto 500 pts",
+                    venue: "Learning labs"
+                }
+            ]
+        }
+
+        return registrations.slice(0, 4).map((reg) => {
+            const event = reg.eventId
+            const eventDate = event?.dateTime ? new Date(event.dateTime) : null
+            return {
+                id: reg._id,
+                title: event?.title ?? "TechnoHack event",
+                subtitle: event?.category ?? "General",
+                status: reg.status,
+                meta: eventDate ? eventDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "TBD",
+                venue: event?.venue ?? "Venue TBA"
+            }
+        })
+    }, [registrations])
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <motion.section
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-3xl border border-white/5 bg-black/40 p-5"
+                className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-[#0b1826] via-[#10142b] to-[#1f0938] p-6"
             >
-                <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/80 font-semibold mb-2">Participant Hub</p>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h1 className="text-3xl font-black font-orbitron text-white">Dashboard</h1>
-                        <p className="text-gray-400 text-sm">Hello {userName}, keep tabs on your TechnoHack journey.</p>
+                <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,#4fd1c5_0%,transparent_55%)]" />
+                <div className="relative grid gap-6 lg:grid-cols-[1.3fr_1fr] items-center">
+                    <div className="space-y-4">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.3em] text-cyan-200/80">
+                            <Sparkles className="w-4 h-4 text-amber-300" />
+                            Live season
+                        </div>
+                        <h1 className="text-3xl sm:text-4xl font-black font-orbitron text-white">
+                            Hey {userName}, your next big win awaits
+                        </h1>
+                        <p className="text-sm text-white/70 max-w-2xl">
+                            Track active registrations, prep for upcoming rounds, and keep your TechnoHack streak alive. Everything you need lands here first.
+                        </p>
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between text-xs text-white/70">
+                                <span>Season momentum</span>
+                                <span>{progressPercent}% complete</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                                <div
+                                    className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-purple-500"
+                                    style={{ width: `${Math.max(progressPercent, 6)}%` }}
+                                />
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-3 text-xs text-white/70">
+                            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1">
+                                <Trophy className="w-4 h-4 text-amber-300" /> {rawStats.completed} completed
+                            </span>
+                            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1">
+                                <Zap className="w-4 h-4 text-cyan-300" /> {rawStats.points} pts earned
+                            </span>
+                            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1">
+                                <Clock className="w-4 h-4 text-purple-300" /> {rawStats.upcoming} upcoming
+                            </span>
+                        </div>
                     </div>
-                    <Link
-                        href="/events"
-                        className="inline-flex items-center gap-2 rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-white/90"
-                    >
-                        Browse Events
-                        <ArrowRight className="w-4 h-4" />
-                    </Link>
+                    <div className="rounded-2xl border border-white/10 bg-black/30 p-5 space-y-5">
+                        <div>
+                            <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/70">Points wallet</p>
+                            <p className="text-4xl font-black text-white mt-2">{rawStats.points}</p>
+                            <p className="text-sm text-white/60">Redeem on workshop boosts & swag drops</p>
+                        </div>
+                        <Link
+                            href="/events"
+                            className="inline-flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/80"
+                        >
+                            Browse new events
+                            <ArrowRight className="w-4 h-4" />
+                        </Link>
+                    </div>
                 </div>
             </motion.section>
 
@@ -233,10 +386,82 @@ function UserDashboardView({ userName, userEmail, statsCards, registrations, loa
                 })}
             </section>
 
+            <section className="grid gap-4 lg:grid-cols-3">
+                <div className="lg:col-span-2 rounded-3xl border border-white/5 bg-black/40 p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/80">Next checkpoint</p>
+                            <h3 className="text-xl font-semibold text-white">{nextEvent?.eventId?.title ?? "Lock your next event"}</h3>
+                        </div>
+                        {nextEventCountdown && (
+                            <span className="text-xs font-semibold text-white/70">{nextEventCountdown}</span>
+                        )}
+                    </div>
+                    {nextEvent?.eventId ? (
+                        <div className="grid gap-3 sm:grid-cols-3 text-sm text-white/80">
+                            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                                <p className="text-[11px] uppercase tracking-[0.25em] text-gray-400">Date</p>
+                                <p>{new Date(nextEvent.eventId.dateTime).toLocaleDateString("en-US", { month: "short", day: "numeric", weekday: "short" })}</p>
+                            </div>
+                            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                                <p className="text-[11px] uppercase tracking-[0.25em] text-gray-400">Time</p>
+                                <p>{new Date(nextEvent.eventId.dateTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</p>
+                            </div>
+                            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                                <p className="text-[11px] uppercase tracking-[0.25em] text-gray-400">Venue</p>
+                                <p>{nextEvent.eventId.venue}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-sm text-white/70">
+                            You haven’t saved a seat yet. Explore trending events and get a guaranteed slot before they go waitlist-only.
+                        </div>
+                    )}
+                    <div className="flex flex-wrap gap-3">
+                        <Link
+                            href="/events"
+                            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white"
+                        >
+                            View event brief
+                            <ArrowRight className="w-4 h-4" />
+                        </Link>
+                        <Link
+                            href="/schedule"
+                            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-white/80"
+                        >
+                            Sync to calendar
+                        </Link>
+                    </div>
+                </div>
+                <div className="rounded-3xl border border-white/5 bg-black/50 p-6 space-y-4">
+                    <p className="text-xs uppercase tracking-[0.3em] text-gray-400">Quick actions</p>
+                    <div className="space-y-3">
+                        {quickActions.map((action) => {
+                            const Icon = action.icon
+                            return (
+                                <Link
+                                    key={action.title}
+                                    href={action.href}
+                                    className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white/80"
+                                >
+                                    <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br ${action.accent} text-white`}>
+                                        <Icon className="w-4 h-4" />
+                                    </span>
+                                    <span>
+                                        <p className="font-semibold text-white">{action.title}</p>
+                                        <p className="text-xs text-white/60">{action.description}</p>
+                                    </span>
+                                </Link>
+                            )
+                        })}
+                    </div>
+                </div>
+            </section>
+
             <section className="space-y-4">
                 <header className="flex items-center justify-between">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/80">My Events</p>
+                        <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/80">My events</p>
                         <h2 className="text-xl font-semibold text-white">Recent registrations</h2>
                     </div>
                     <Link href="/events" className="text-xs font-semibold text-cyan-300">View all</Link>
@@ -260,13 +485,7 @@ function UserDashboardView({ userName, userEmail, statsCards, registrations, loa
                                             <p className="text-white font-semibold">{event.title}</p>
                                             <p className="text-[12px] text-gray-400">{event.category}</p>
                                         </div>
-                                        <span className={`text-[11px] px-2 py-0.5 rounded-full border ${
-                                            reg.status === "confirmed"
-                                                ? "border-emerald-500/40 text-emerald-300"
-                                                : reg.status === "pending"
-                                                    ? "border-amber-500/40 text-amber-300"
-                                                    : "border-rose-500/40 text-rose-300"
-                                        }`}>
+                                        <span className={`text-[11px] px-2 py-0.5 rounded-full border ${statusBadgeClass(reg.status)}`}>
                                             {reg.status}
                                         </span>
                                     </div>
@@ -299,18 +518,60 @@ function UserDashboardView({ userName, userEmail, statsCards, registrations, loa
                         })
                     )}
                 </div>
+            </section>
 
-                <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="rounded-2xl border border-white/5 bg-[#05050c]/60 p-4">
-                        <p className="text-xs uppercase tracking-[0.25em] text-gray-400">Profile</p>
+            <section className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-3xl border border-white/5 bg-black/45 p-6 space-y-5">
+                    <div className="flex items-center gap-2">
+                        <ListChecks className="w-4 h-4 text-cyan-300" />
+                        <p className="text-xs uppercase tracking-[0.3em] text-gray-400">Journey timeline</p>
+                    </div>
+                    <div className="space-y-4">
+                        {timelineItems.map((item) => (
+                            <div key={item.id} className="flex gap-3">
+                                <span className="mt-1 h-8 w-8 rounded-full border border-white/15 bg-white/5 grid place-items-center text-xs text-white/70">
+                                    {item.meta}
+                                </span>
+                                <div className="flex-1 space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-semibold text-white">{item.title}</p>
+                                            <p className="text-xs text-gray-400">{item.subtitle}</p>
+                                        </div>
+                                        <span className={`text-[11px] px-2 py-0.5 rounded-full border ${statusBadgeClass(item.status)}`}>
+                                            {item.status}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-500">{item.venue}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <div className="rounded-3xl border border-white/5 bg-[#05050c]/60 p-6">
+                        <p className="text-xs uppercase tracking-[0.25em] text-gray-400">Profile snapshot</p>
                         <h3 className="text-lg font-semibold text-white mt-2">{userName}</h3>
                         <p className="text-[13px] text-gray-400">{userEmail}</p>
-                        <Link href="/profile" className="mt-3 inline-flex text-xs font-semibold text-cyan-300">Edit profile →</Link>
+                        <Link href="/profile" className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-cyan-500/40 px-4 py-2 text-xs font-semibold text-cyan-300">
+                            Manage identity
+                            <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
                     </div>
-                    <div className="rounded-2xl border border-white/5 bg-[#05050c]/60 p-4 space-y-2 text-sm text-gray-300">
-                        <p className="text-xs uppercase tracking-[0.25em] text-gray-400">Quick links</p>
-                        <Link href="/schedule" className="block text-white/80">View live schedule</Link>
-                        <Link href="/about" className="block text-white/80">About TechnoHack</Link>
+                    <div className="rounded-3xl border border-white/5 bg-[#05050c]/60 p-6 space-y-3 text-sm text-gray-300">
+                        <p className="text-xs uppercase tracking-[0.25em] text-gray-400">Resources</p>
+                        <Link href="/schedule" className="flex items-center justify-between text-white/80">
+                            Live schedule
+                            <ArrowRight className="w-4 h-4" />
+                        </Link>
+                        <Link href="/about" className="flex items-center justify-between text-white/80">
+                            Program handbook
+                            <ArrowRight className="w-4 h-4" />
+                        </Link>
+                        <Link href="/events" className="flex items-center justify-between text-white/80">
+                            Spotlight events
+                            <ArrowRight className="w-4 h-4" />
+                        </Link>
                     </div>
                 </div>
             </section>
@@ -334,6 +595,7 @@ function AdminDashboardView({ userName, overview, loading }: {
 
     const adminLinks = [
         { href: "/admin", label: "Open Admin Panel", icon: Shield },
+        { href: "/admin/profile", label: "Edit Profile", icon: UserCircle },
         { href: "/admin/events", label: "Manage Events", icon: Calendar },
         { href: "/admin/registrations", label: "View Registrations", icon: FileText },
         { href: "/admin/analytics", label: "Analytics", icon: BarChart3 }

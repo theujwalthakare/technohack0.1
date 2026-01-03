@@ -42,8 +42,8 @@ export async function seedEvents() {
             firstPrize: 2000,
             secondPrize: 1000,
             certificates: true,
-            coordinatorName: "Akshay Somvanshi",
-            coordinatorPhone: "7774951438",
+            coordinatorName: "Somvanshi Akshay",
+            coordinatorPhone: "9699818382",
             whatsappLink: "https://chat.whatsapp.com/LcHtOwEY3d9L9DnS3EzcI3",
             isPublished: true
         },
@@ -78,7 +78,7 @@ Round 3: 25 Questions (10 Mins)
             certificates: true,
             coordinatorName: "Vaibhav Shinde",
             coordinatorPhone: "7709779569",
-            whatsappLink: "",
+            whatsappLink: "https://chat.whatsapp.com/CnPiNurLhe2LnHtHz8EBsr",
             isPublished: true
         },
         {
@@ -105,8 +105,8 @@ Round 3: 25 Questions (10 Mins)
             firstPrize: 2000,
             secondPrize: 1000,
             certificates: true,
-            coordinatorName: "Shreya Ghoshal",
-            coordinatorPhone: "8468889030",
+            coordinatorName: "Ghoshal Shreya",
+            coordinatorPhone: "8488890300",
             whatsappLink: "https://chat.whatsapp.com/GKkoiIAoyqR8O1fSi3WSSa",
             isPublished: true
         },
@@ -166,7 +166,7 @@ Round 3: 25 Questions (10 Mins)
 - Maximum 3-5 members per team.`,
             image: "https://images.unsplash.com/photo-1542204165-65bf26472b9b",
             category: "Business",
-            dateTime: new Date("2026-01-08T16:00:00"),
+            dateTime: new Date("2026-01-09T12:00:00"),
             venue: "Seminar Hall",
             price: 50,
             teamSize: 5,
@@ -315,7 +315,7 @@ Stage 3: Q&A Round
 - PPT presentation OR Business Model.`,
             image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7",
             category: "Business",
-            dateTime: new Date("2026-01-09T14:30:00"),
+            dateTime: new Date("2026-01-09T14:00:00"),
             venue: "Auditorium",
             price: 50,
             teamSize: 5,

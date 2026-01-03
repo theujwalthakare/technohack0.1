@@ -3,9 +3,11 @@ import { getAdminStats } from "@/lib/actions/admin.actions";
 import { Users, Calendar, Activity } from "lucide-react";
 
 type RecentRegistration = {
-    _id: string;
-    eventTitle?: string;
-    clerkId?: string;
+    id: string;
+    eventTitle: string;
+    eventCategory: string;
+    userName: string;
+    userEmail: string;
     status: string;
     registeredAt: string;
 };
@@ -51,19 +53,18 @@ export default async function AdminDashboard() {
                         <p className="text-muted-foreground">No registrations yet.</p>
                     ) : (
                         stats.recentRegistrations.map((reg: RecentRegistration) => (
-                            <div key={reg._id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/5">
+                            <div key={reg.id} className="flex flex-col gap-2 p-4 bg-white/5 rounded-lg border border-white/5">
                                 <div>
                                     <p className="font-medium text-white">{reg.eventTitle}</p>
-                                    <p className="text-xs text-muted-foreground">{reg.clerkId}</p>
+                                    <p className="text-xs text-muted-foreground">{reg.eventCategory}</p>
                                 </div>
-                                <div className="text-right">
-                                    <span className="inline-block px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">
-                                        {reg.status}
-                                    </span>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        {new Date(reg.registeredAt).toLocaleDateString()}
-                                    </p>
+                                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <span>{reg.userName} · {reg.userEmail}</span>
+                                    <span>{new Date(reg.registeredAt).toLocaleString()}</span>
                                 </div>
+                                <span className="inline-flex w-fit items-center justify-center px-2 py-1 rounded text-xs bg-green-500/20 text-green-400 uppercase tracking-wide">
+                                    {reg.status}
+                                </span>
                             </div>
                         ))
                     )}

@@ -1,12 +1,13 @@
-import { getEventBySlug } from "@/lib/actions/event.actions";
+import { getAllEvents, getEventBySlug } from "@/lib/actions/event.actions";
 import { getRegistrationStatus } from "@/lib/actions/user.actions";
 import { getPaymentSettings } from "@/lib/actions/settings.actions";
 import { PageContainer } from "@/components/shared/PageContainer";
-import { Calendar, MapPin, Users, User, DollarSign } from "lucide-react";
+import { Calendar, MapPin, Users, User, DollarSign, ArrowLeft, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { RegisterButton } from "@/components/events/RegisterButton";
 import { MobileActionBar } from "@/components/shared/MobileActionBar";
+import Link from "next/link";
 
 // Dynamic metadata
 export async function generateMetadata({ params }: { params: { slug: string } }) {
@@ -22,11 +23,19 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
 export default async function EventDetailsPage({ params }: { params: { slug: string } }) {
     const { slug } = await params;
-    const event = await getEventBySlug(slug);
+    const [event, events] = await Promise.all([
+        getEventBySlug(slug),
+        getAllEvents()
+    ]);
 
     if (!event) {
         notFound();
     }
+
+    const orderedEvents = events.sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+    const currentIndex = orderedEvents.findIndex((entry) => entry.slug === slug);
+    const prevEvent = currentIndex > 0 ? orderedEvents[currentIndex - 1] : null;
+    const nextEvent = currentIndex >= 0 && currentIndex < orderedEvents.length - 1 ? orderedEvents[currentIndex + 1] : null;
 
     // Check registration status
     const registration = await getRegistrationStatus(event._id);
@@ -57,6 +66,46 @@ export default async function EventDetailsPage({ params }: { params: { slug: str
                     </PageContainer>
                 </div>
             </div>
+
+            {(prevEvent || nextEvent) && (
+                <PageContainer className="pt-8">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        {prevEvent ? (
+                            <Link
+                                href={`/events/${prevEvent.slug}`}
+                                className="group flex flex-1 min-w-[160px] items-center gap-3 rounded-2xl px-3 py-2 text-left text-white/80 hover:bg-white/5 transition"
+                            >
+                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/30 text-white/70 group-hover:text-white">
+                                    <ArrowLeft className="w-4 h-4" />
+                                </span>
+                                <span>
+                                    <p className="text-[11px] uppercase tracking-[0.3em] text-white/60">Previous</p>
+                                    <p className="text-sm font-semibold text-white">{prevEvent.title}</p>
+                                </span>
+                            </Link>
+                        ) : (
+                            <div className="flex-1" />
+                        )}
+
+                        {nextEvent ? (
+                            <Link
+                                href={`/events/${nextEvent.slug}`}
+                                className="group flex flex-1 min-w-[160px] items-center justify-end gap-3 rounded-2xl px-3 py-2 text-right text-white/80 hover:bg-white/5 transition"
+                            >
+                                <span>
+                                    <p className="text-[11px] uppercase tracking-[0.3em] text-white/60">Next</p>
+                                    <p className="text-sm font-semibold text-white">{nextEvent.title}</p>
+                                </span>
+                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/30 text-white/70 group-hover:text-white">
+                                    <ArrowRight className="w-4 h-4" />
+                                </span>
+                            </Link>
+                        ) : (
+                            <div className="flex-1" />
+                        )}
+                    </div>
+                </PageContainer>
+            )}
 
             <PageContainer className="pt-10 lg:pt-16">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
@@ -129,7 +178,7 @@ export default async function EventDetailsPage({ params }: { params: { slug: str
                             </div>
 
                             <div className="space-y-4">
-                                <div className="hidden lg:block">
+                                <div>
                                     <RegisterButton
                                         event={{ _id: event._id, title: event.title, teamSize: event.teamSize, price: event.price }}
                                         isRegistered={isRegistered}
