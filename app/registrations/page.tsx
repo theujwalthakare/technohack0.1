@@ -116,7 +116,7 @@ export default async function RegistrationsPage() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {registrations.map((registration) => {
+                            {registrations.map((registration: RegistrationWithEvent) => {
                                 const event = registration.eventId
                                 if (!event) return null
                                 const dateLabel = event.dateTime ? new Date(event.dateTime).toLocaleString("en-US", {
