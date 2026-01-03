@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Download, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { beginGlobalLoading, endGlobalLoading } from "@/lib/utils/global-loading"
 
 type ExportType = "registrations" | "users"
 
@@ -18,7 +17,6 @@ export function AdminExportMenu({ query, payment, className }: AdminExportMenuPr
 
     const handleExport = async (type: ExportType) => {
         try {
-            beginGlobalLoading()
             setLoading(type)
             const params = new URLSearchParams({ type })
             if (type === "registrations") {
@@ -50,7 +48,6 @@ export function AdminExportMenu({ query, payment, className }: AdminExportMenuPr
             alert("Unable to export data right now. Please try again.")
         } finally {
             setLoading(null)
-            endGlobalLoading()
         }
     }
 

@@ -3,7 +3,6 @@
 import { getEventRegistrations } from "@/lib/actions/admin.actions"
 import { Download, Loader2 } from "lucide-react"
 import { useState } from "react"
-import { beginGlobalLoading, endGlobalLoading } from "@/lib/utils/global-loading"
 
 type ExportUser = {
     firstName?: string
@@ -26,7 +25,6 @@ export function ExportButton({ eventId, eventTitle }: { eventId: string, eventTi
 
     const handleDownload = async () => {
         try {
-            beginGlobalLoading();
             setLoading(true);
             const data = await getEventRegistrations(eventId) as ExportRegistration[];
 
@@ -74,7 +72,6 @@ export function ExportButton({ eventId, eventTitle }: { eventId: string, eventTi
             alert("Failed to download CSV");
         } finally {
             setLoading(false);
-            endGlobalLoading();
         }
     }
 
