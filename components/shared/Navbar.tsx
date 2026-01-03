@@ -20,6 +20,7 @@ export function Navbar() {
     const [isOpen, setIsOpen] = useState(false)
     const [isVisible, setIsVisible] = useState(true)
     const [lastScrollY, setLastScrollY] = useState(0)
+    const [isAdmin, setIsAdmin] = useState(false)
     const pathname = usePathname()
     const { isSignedIn } = useUser()
 
@@ -44,6 +45,42 @@ export function Navbar() {
         window.addEventListener('scroll', handleScroll, { passive: true })
         return () => window.removeEventListener('scroll', handleScroll)
     }, [lastScrollY])
+
+    useEffect(() => {
+        let isMounted = true
+
+        if (!isSignedIn) {
+            queueMicrotask(() => {
+                if (isMounted) setIsAdmin(false)
+            })
+            return () => {
+                isMounted = false
+            }
+        }
+
+        const controller = new AbortController()
+
+        fetch("/api/me/profile", { signal: controller.signal })
+            .then((response) => response.ok ? response.json() : null)
+            .then((data) => {
+                if (!isMounted) return
+                setIsAdmin(Boolean(data?.isAdmin))
+            })
+            .catch(() => {
+                if (!isMounted) return
+                setIsAdmin(false)
+            })
+
+        return () => {
+            isMounted = false
+            controller.abort()
+        }
+    }, [isSignedIn])
+
+    const showAdminLink = isSignedIn && isAdmin
+    const visibleLinks = showAdminLink
+        ? [...navLinks, { href: "/admin", label: "Admin" }]
+        : navLinks
 
     return (
         <nav className={cn(
@@ -72,8 +109,8 @@ export function Navbar() {
             <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
 
             <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* 3-Zone Grid Architecture */}
-                <div className="grid grid-cols-[auto_1fr_auto] items-center gap-8 h-16">
+                {/* Responsive grid that collapses to a simple flex row on mobile */}
+                <div className="flex items-center justify-between h-16 gap-4 md:grid md:grid-cols-[auto_1fr_auto] md:items-center md:gap-8">
 
                     {/* ZONE 1: Brand (Left) */}
                     <Link href="/" className="flex-shrink-0 group">
@@ -92,7 +129,7 @@ export function Navbar() {
                     {/* ZONE 2: Primary Navigation (Center) */}
                     <nav className="hidden md:flex items-center justify-center">
                         <ul className="flex items-center gap-1">
-                            {navLinks.map((link) => {
+                            {visibleLinks.map((link) => {
                                 const isActive = pathname === link.href
                                 return (
                                     <li key={link.href}>
@@ -138,14 +175,40 @@ export function Navbar() {
                         )}
                     </div>
 
-                    {/* Mobile Menu Button */}
-                    <button
-                        onClick={() => setIsOpen(!isOpen)}
-                        className="md:hidden w-9 h-9 grid place-items-center text-white/70 hover:text-white transition-colors rounded-md hover:bg-white/[0.06]"
-                        aria-label="Toggle menu"
-                    >
-                        {isOpen ? <X size={20} /> : <Menu size={20} />}
-                    </button>
+                    {/* Mobile Utility Cluster */}
+                    <div className="flex items-center gap-2 md:hidden">
+                        {showAdminLink && (
+                            <Link
+                                href="/admin"
+                                className="px-3 py-1.5 text-xs font-semibold rounded-full border border-cyan-400/40 text-cyan-100"
+                            >
+                                Admin
+                            </Link>
+                        )}
+                        {isSignedIn ? (
+                            <Link
+                                href="/dashboard"
+                                className="px-3 py-1.5 text-xs font-semibold rounded-full border border-white/20 text-white/80 hover:text-white"
+                            >
+                                Dashboard
+                            </Link>
+                        ) : (
+                            <Link
+                                href="/sign-in"
+                                className="px-3 py-1.5 text-xs font-semibold rounded-full bg-white text-black"
+                            >
+                                Login
+                            </Link>
+                        )}
+                        <button
+                            onClick={() => setIsOpen(!isOpen)}
+                            className="w-10 h-10 grid place-items-center text-white/70 hover:text-white transition-colors rounded-xl border border-white/10"
+                            aria-label="Toggle menu"
+                            aria-expanded={isOpen}
+                        >
+                            {isOpen ? <X size={20} /> : <Menu size={20} />}
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -156,7 +219,7 @@ export function Navbar() {
             )}>
                 <div className="relative px-4 pt-4 pb-6 space-y-1 bg-black/60 backdrop-blur-xl">
                     {/* Mobile Nav Links */}
-                    {navLinks.map((link) => {
+                    {visibleLinks.map((link) => {
                         const isActive = pathname === link.href
                         return (
                             <Link

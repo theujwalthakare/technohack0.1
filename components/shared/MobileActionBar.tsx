@@ -1,5 +1,8 @@
+"use client"
+
 import Link from "next/link"
 import type { ReactNode } from "react"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 
 export type MobileAction = {
@@ -14,14 +17,27 @@ interface MobileActionBarProps {
     actions?: MobileAction[]
     children?: ReactNode
     className?: string
+    dismissible?: boolean
 }
 
-export function MobileActionBar({ title, subtitle, actions = [], children, className }: MobileActionBarProps) {
-    if (!title && !subtitle && actions.length === 0 && !children) return null
+export function MobileActionBar({ title, subtitle, actions = [], children, className, dismissible = true }: MobileActionBarProps) {
+    const [dismissed, setDismissed] = useState(false)
+
+    if (dismissed || (!title && !subtitle && actions.length === 0 && !children)) return null
 
     return (
         <div className={cn("lg:hidden fixed inset-x-0 bottom-0 z-40 px-4 pb-4", className)}>
-            <div className="rounded-3xl border border-white/10 bg-black/90 backdrop-blur-xl p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] space-y-4">
+            <div className="relative rounded-3xl border border-white/10 bg-black/90 backdrop-blur-xl p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] space-y-4">
+                {dismissible && (
+                    <button
+                        type="button"
+                        aria-label="Dismiss helper"
+                        onClick={() => setDismissed(true)}
+                        className="absolute top-3 right-3 w-8 h-8 rounded-full border border-white/10 text-white/70 hover:text-white hover:border-white/30 transition"
+                    >
+                        ×
+                    </button>
+                )}
                 {(title || subtitle) && (
                     <div>
                         {title && <p className="text-sm font-semibold text-white">{title}</p>}

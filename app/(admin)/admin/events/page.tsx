@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { createAdminEvent, deleteAdminEvent, getAllEventsAdmin, toggleEventStatus } from "@/lib/actions/admin.actions";
-import { Eye, EyeOff, Link2, Plus, Trash2, Pencil } from "lucide-react";
+import { Eye, EyeOff, Link2, Plus, Trash2, Pencil, Filter, Search } from "lucide-react";
 import Image from "next/image";
 import { ExportButton } from "@/components/admin/ExportButton";
+import { cn } from "@/lib/utils";
 
 type AdminEvent = {
     _id: string;
@@ -19,9 +20,37 @@ type AdminEvent = {
 
 const modeOptions = ["Offline", "Online", "Hybrid", "Mobile"];
 const inputClass = "w-full rounded-xl border border-white/10 bg-[#04040a] px-4 py-2.5 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50";
+const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short"
+});
 
-export default async function AdminEventsPage() {
+type EventsPageSearchParams = {
+    query?: string;
+    status?: string;
+};
+
+export default async function AdminEventsPage({ searchParams }: { searchParams?: EventsPageSearchParams }) {
     const events = await getAllEventsAdmin() as AdminEvent[];
+    const filters = {
+        query: typeof searchParams?.query === "string" ? searchParams.query : "",
+        status: typeof searchParams?.status === "string" ? searchParams.status : "all"
+    };
+
+    const filteredEvents = events.filter((event) => {
+        const matchesQuery = filters.query
+            ? [event.title, event.category, event.venue]
+                .join(" ")
+                .toLowerCase()
+                .includes(filters.query.toLowerCase())
+            : true;
+        const matchesStatus = filters.status === "all"
+            ? true
+            : filters.status === "published"
+                ? event.isPublished
+                : !event.isPublished;
+        return matchesQuery && matchesStatus;
+    });
 
     return (
         <div className="space-y-10">
@@ -34,7 +63,86 @@ export default async function AdminEventsPage() {
             </div>
 
             <CreateEventForm />
-            <EventsTable events={events} />
+            <EventsFilters query={filters.query} status={filters.status} />
+            <ResponsiveEventsView
+                events={filteredEvents}
+                hasFiltersApplied={Boolean(filters.query) || filters.status !== "all"}
+                totalCount={events.length}
+            />
+        </div>
+    );
+}
+
+function EventsFilters({ query, status }: { query: string; status: string }) {
+    return (
+        <form className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-[#080813] border border-white/10 rounded-2xl p-4" method="get">
+            <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-300" />
+                <input
+                    name="query"
+                    defaultValue={query}
+                    placeholder="Search title, venue, or category"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 pl-11 pr-4 py-2.5 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
+                />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                <div className="relative">
+                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-300" />
+                    <select
+                        name="status"
+                        defaultValue={status}
+                        className="appearance-none rounded-xl border border-white/10 bg-white/5 pl-10 pr-8 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                    >
+                        <option value="all">All statuses</option>
+                        <option value="published">Published</option>
+                        <option value="draft">Draft</option>
+                    </select>
+                </div>
+                <button
+                    type="submit"
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-500 text-white text-sm font-semibold"
+                >
+                    Apply
+                </button>
+                {(query || status !== "all") && (
+                    <Link
+                        href="/admin/events"
+                        className="px-4 py-2.5 rounded-xl border border-white/15 text-sm text-white/70 hover:text-white"
+                    >
+                        Reset
+                    </Link>
+                )}
+            </div>
+        </form>
+    );
+}
+
+function ResponsiveEventsView({ events, hasFiltersApplied, totalCount }: { events: AdminEvent[]; hasFiltersApplied: boolean; totalCount: number }) {
+    if (events.length === 0) {
+        return (
+            <div className="bg-[#080813] border border-white/10 rounded-2xl p-8 text-center text-sm text-gray-400">
+                {hasFiltersApplied ? (
+                    <p>No events match the current filters.</p>
+                ) : (
+                    <p>No events found. Use the form above to create your first listing.</p>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-5">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/60">
+                Showing {events.length} of {totalCount} events
+            </p>
+            <div className="hidden md:block">
+                <EventsTable events={events} />
+            </div>
+            <div className="space-y-4 md:hidden">
+                {events.map((event) => (
+                    <MobileEventCard key={event._id} event={event} />
+                ))}
+            </div>
         </div>
     );
 }
@@ -56,7 +164,7 @@ function EventsTable({ events }: { events: AdminEvent[] }) {
                         {events.length === 0 && (
                             <tr>
                                 <td className="px-6 py-10 text-center text-gray-400" colSpan={4}>
-                                    No events found. Use the form above to create your first listing.
+                                    No events match your filters.
                                 </td>
                             </tr>
                         )}
@@ -69,7 +177,7 @@ function EventsTable({ events }: { events: AdminEvent[] }) {
                                         </div>
                                         <div>
                                             <p className="font-semibold text-white">{event.title}</p>
-                                            <p className="text-xs text-gray-400">{event.category} · {new Date(event.dateTime).toLocaleString()}</p>
+                                            <p className="text-xs text-gray-400">{event.category} · {formatEventDate(event.dateTime)}</p>
                                             <p className="text-[11px] text-gray-500">{event.venue}</p>
                                         </div>
                                     </div>
@@ -78,65 +186,10 @@ function EventsTable({ events }: { events: AdminEvent[] }) {
                                     {event.registrationCount}
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${event.isPublished
-                                        ? "bg-green-500/20 text-green-400"
-                                        : "bg-yellow-500/20 text-yellow-400"
-                                        }`}>
-                                        {event.isPublished ? "Published" : "Draft"}
-                                    </span>
+                                    <EventStatusBadge isPublished={event.isPublished} />
                                 </td>
                                 <td className="px-6 py-4">
-                                    <div className="flex items-center justify-end gap-2">
-                                        <form action={async () => {
-                                            "use server"
-                                            await toggleEventStatus(event._id, event.isPublished)
-                                        }}>
-                                            <button
-                                                type="submit"
-                                                className="p-2 rounded-lg border border-white/5 hover:border-white/20 text-gray-300 hover:text-white transition"
-                                                title="Toggle Visibility"
-                                            >
-                                                {event.isPublished ? <Eye size={18} /> : <EyeOff size={18} />}
-                                            </button>
-                                        </form>
-
-                                        {event.whatsappLink ? (
-                                            <a
-                                                href={event.whatsappLink}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="p-2 rounded-lg border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 transition"
-                                                title="Open WhatsApp group"
-                                            >
-                                                <Link2 size={18} />
-                                            </a>
-                                        ) : (
-                                            <span className="px-2 py-1 text-[11px] text-gray-500 border border-white/5 rounded-lg">
-                                                No Link
-                                            </span>
-                                        )}
-
-                                        <ExportButton eventId={event._id} eventTitle={event.title} />
-
-                                        <Link
-                                            href={`/admin/events/${event._id}`}
-                                            className="p-2 rounded-lg border border-white/10 text-gray-200 hover:text-white hover:border-white/40 transition"
-                                            title="Edit event"
-                                        >
-                                            <Pencil size={18} />
-                                        </Link>
-
-                                        <form action={deleteAdminEvent}>
-                                            <input type="hidden" name="eventId" value={event._id} />
-                                            <button
-                                                type="submit"
-                                                className="p-2 rounded-lg border border-red-500/30 text-red-300 hover:bg-red-500/10 transition"
-                                                title="Delete event"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </form>
-                                    </div>
+                                    <EventActions event={event} />
                                 </td>
                             </tr>
                         ))}
@@ -145,6 +198,123 @@ function EventsTable({ events }: { events: AdminEvent[] }) {
             </div>
         </div>
     );
+}
+
+function MobileEventCard({ event }: { event: AdminEvent }) {
+    return (
+        <div className="rounded-2xl border border-white/10 bg-[#080813] p-4 space-y-4">
+            <div className="flex items-start gap-4">
+                <div className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
+                    <Image src={event.image} alt={event.title} fill className="object-cover" />
+                </div>
+                <div className="min-w-0">
+                    <p className="text-lg font-semibold text-white line-clamp-2">{event.title}</p>
+                    <p className="text-xs text-gray-400">{event.category} · {formatEventDate(event.dateTime)}</p>
+                    <p className="text-[11px] text-gray-500">{event.venue}</p>
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm text-gray-300">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-xs uppercase tracking-[0.3em] text-white/60">Signups</p>
+                    <p className="text-2xl font-semibold text-white">{event.registrationCount}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 flex items-center justify-center">
+                    <EventStatusBadge isPublished={event.isPublished} />
+                </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-400">
+                {event.whatsappLink ? (
+                    <a href={event.whatsappLink} target="_blank" rel="noreferrer" className="text-cyan-300 hover:text-cyan-100">
+                        Community link ↗
+                    </a>
+                ) : (
+                    <span>No WhatsApp link</span>
+                )}
+                <span className="text-white/70 font-semibold">Happens {formatEventDate(event.dateTime)}</span>
+            </div>
+            <EventActions event={event} compact />
+        </div>
+    );
+}
+
+function EventStatusBadge({ isPublished }: { isPublished: boolean }) {
+    return (
+        <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${isPublished
+            ? "bg-emerald-500/20 text-emerald-300"
+            : "bg-amber-500/20 text-amber-200"
+            }`}>
+            {isPublished ? "Published" : "Draft"}
+        </span>
+    );
+}
+
+function EventActions({ event, compact }: { event: AdminEvent; compact?: boolean }) {
+    return (
+        <div className={cn(
+            "flex items-center gap-2",
+            compact ? "justify-start flex-wrap" : "justify-end"
+        )}>
+            <form action={async () => {
+                "use server";
+                await toggleEventStatus(event._id, event.isPublished);
+            }}>
+                <button
+                    type="submit"
+                    className="p-2 rounded-lg border border-white/5 hover:border-white/20 text-gray-300 hover:text-white transition"
+                    title="Toggle Visibility"
+                >
+                    {event.isPublished ? <Eye size={18} /> : <EyeOff size={18} />}
+                </button>
+            </form>
+
+            {event.whatsappLink ? (
+                <a
+                    href={event.whatsappLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2 rounded-lg border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 transition"
+                    title="Open WhatsApp group"
+                >
+                    <Link2 size={18} />
+                </a>
+            ) : (
+                !compact && (
+                    <span className="px-2 py-1 text-[11px] text-gray-500 border border-white/5 rounded-lg">
+                        No Link
+                    </span>
+                )
+            )}
+
+            <ExportButton eventId={event._id} eventTitle={event.title} />
+
+            <Link
+                href={`/admin/events/${event._id}`}
+                className="p-2 rounded-lg border border-white/10 text-gray-200 hover:text-white hover:border-white/40 transition"
+                title="Edit event"
+            >
+                <Pencil size={18} />
+            </Link>
+
+            <form action={deleteAdminEvent}>
+                <input type="hidden" name="eventId" value={event._id} />
+                <button
+                    type="submit"
+                    className="p-2 rounded-lg border border-red-500/30 text-red-300 hover:bg-red-500/10 transition"
+                    title="Delete event"
+                >
+                    <Trash2 size={18} />
+                </button>
+            </form>
+        </div>
+    );
+}
+
+function formatEventDate(input: AdminEvent["dateTime"]) {
+    try {
+        return eventDateFormatter.format(new Date(input));
+    } catch {
+        return "TBD";
+    }
 }
 
 function CreateEventForm() {

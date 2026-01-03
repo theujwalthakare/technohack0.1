@@ -2,9 +2,21 @@
 
 import { useUser } from "@clerk/nextjs"
 import { motion } from "framer-motion"
-import { Calendar, Trophy, User, Zap, ArrowRight, Clock, MapPin } from "lucide-react"
+import {
+    Calendar,
+    Trophy,
+    Users as UsersIcon,
+    Zap,
+    ArrowRight,
+    Clock,
+    MapPin,
+    Shield,
+    BarChart3,
+    FileText
+} from "lucide-react"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import type { ComponentType } from "react"
 
 type DashboardStats = {
     total: number
@@ -30,6 +42,34 @@ type RegistrationEntry = {
     cashCode?: string
 }
 
+type DashboardResponse = {
+    stats: DashboardStats
+    registrations: RegistrationEntry[]
+    role?: Role
+    isAdmin?: boolean
+}
+
+type Role = "user" | "admin" | "superadmin"
+
+type AdminOverview = {
+    stats: {
+        users: number
+        events: number
+        registrations: number
+    }
+    recentRegistrations: AdminRecentRegistration[]
+}
+
+type AdminRecentRegistration = {
+    id: string
+    eventTitle: string
+    eventCategory: string
+    userName: string
+    userEmail: string
+    status: string
+    registeredAt: string
+}
+
 const currencyFormatter = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
@@ -42,6 +82,9 @@ export default function DashboardPage() {
     const [stats, setStats] = useState<DashboardStats>({ total: 0, upcoming: 0, completed: 0, points: 0 })
     const [registrations, setRegistrations] = useState<RegistrationEntry[]>([])
     const [loading, setLoading] = useState(true)
+    const [role, setRole] = useState<Role>("user")
+    const [adminOverview, setAdminOverview] = useState<AdminOverview | null>(null)
+    const [adminLoading, setAdminLoading] = useState(false)
 
     useEffect(() => {
         if (!user) return
@@ -55,10 +98,11 @@ export default function DashboardPage() {
                 if (!response.ok) {
                     throw new Error("Failed to load dashboard data")
                 }
-                const data = await response.json() as { stats: DashboardStats; registrations: RegistrationEntry[] }
+                const data = await response.json() as DashboardResponse
                 if (isMounted) {
                     setStats(data.stats)
                     setRegistrations(data.registrations)
+                    setRole(data.role ?? (data.isAdmin ? "admin" : "user"))
                 }
             } catch (error) {
                 console.error(error)
@@ -76,253 +120,297 @@ export default function DashboardPage() {
         }
     }, [user])
 
-    const statsCards = [
-        { label: "Events Registered", value: stats.total.toString(), icon: Calendar, color: "from-cyan-500/20 to-blue-500/20", borderColor: "border-cyan-500/30" },
-        { label: "Upcoming Events", value: stats.upcoming.toString(), icon: Clock, color: "from-purple-500/20 to-pink-500/20", borderColor: "border-purple-500/30" },
-        { label: "Completed", value: stats.completed.toString(), icon: Trophy, color: "from-green-500/20 to-emerald-500/20", borderColor: "border-green-500/30" },
-        { label: "Total Points", value: stats.points.toString(), icon: Zap, color: "from-orange-500/20 to-yellow-500/20", borderColor: "border-orange-500/30" }
-    ]
+    const isAdminView = role === "admin" || role === "superadmin"
+
+    useEffect(() => {
+        if (!isAdminView || adminOverview) return
+
+        let isMounted = true
+        setAdminLoading(true)
+
+        fetch("/api/admin/overview")
+            .then((response) => response.ok ? response.json() : null)
+            .then((data: AdminOverview | null) => {
+                if (!isMounted) return
+                if (data) {
+                    setAdminOverview(data)
+                }
+            })
+            .catch((error) => {
+                console.error(error)
+            })
+            .finally(() => {
+                if (isMounted) {
+                    setAdminLoading(false)
+                }
+            })
+
+        return () => {
+            isMounted = false
+        }
+    }, [isAdminView, adminOverview])
+
+    const statsCards = useMemo(() => ([
+        { label: "Events Registered", value: stats.total.toString(), icon: Calendar, color: "from-cyan-500/10 to-blue-500/10", borderColor: "border-cyan-500/20" },
+        { label: "Upcoming", value: stats.upcoming.toString(), icon: Clock, color: "from-purple-500/10 to-pink-500/10", borderColor: "border-purple-500/20" },
+        { label: "Completed", value: stats.completed.toString(), icon: Trophy, color: "from-green-500/10 to-emerald-500/10", borderColor: "border-green-500/20" },
+        { label: "Total Points", value: stats.points.toString(), icon: Zap, color: "from-orange-500/10 to-yellow-500/10", borderColor: "border-orange-500/20" }
+    ]), [stats])
 
     return (
-        <div className="min-h-screen bg-background py-20">
-            {/* Background Effects */}
+        <div className="min-h-screen bg-background pt-24 pb-12">
             <div className="fixed inset-0 opacity-5 pointer-events-none">
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#00F0FF12_1px,transparent_1px),linear-gradient(to_bottom,#00F0FF12_1px,transparent_1px)] bg-[size:40px_40px]" />
             </div>
 
-            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-8"
-                >
-                    <div className="flex items-center justify-between mb-2">
-                        <div>
-                            <h1 className="text-4xl md:text-5xl font-black font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400"
-                                style={{ textShadow: '0 0 30px rgba(6, 182, 212, 0.5)' }}
-                            >
-                                DASHBOARD
-                            </h1>
-                            <p className="text-gray-400 mt-2">
-                                Welcome back, <span className="text-cyan-400 font-bold">{user?.firstName || 'Participant'}</span>
-                            </p>
-                        </div>
-                        <Link
-                            href="/events"
-                            className="px-6 py-3 rounded-lg bg-gradient-to-r from-cyan-600 to-purple-600 text-white font-bold hover:shadow-[0_0_20px_rgba(6,182,212,0.5)] transition-all duration-300 flex items-center gap-2"
-                        >
-                            Browse Events
-                            <ArrowRight className="w-4 h-4" />
-                        </Link>
-                    </div>
-                </motion.div>
+            <div className="relative max-w-5xl mx-auto px-4 space-y-6">
+                {isAdminView ? (
+                    <AdminDashboardView
+                        userName={user?.firstName ?? "Admin"}
+                        overview={adminOverview}
+                        loading={adminLoading}
+                    />
+                ) : (
+                    <UserDashboardView
+                        userName={user?.firstName ?? "Participant"}
+                        userEmail={user?.primaryEmailAddress?.emailAddress ?? ""}
+                        statsCards={statsCards}
+                        registrations={registrations}
+                        loading={loading}
+                    />
+                )}
+            </div>
+        </div>
+    )
+}
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    {statsCards.map((stat, index) => {
-                        const Icon = stat.icon
-                        return (
-                            <motion.div
-                                key={stat.label}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.1 }}
-                                className="relative group"
-                            >
-                                <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} rounded-lg border ${stat.borderColor} group-hover:border-opacity-60 transition-all`} />
-                                <div className="relative p-6">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${stat.color} border ${stat.borderColor} flex items-center justify-center`}>
-                                            <Icon className="w-6 h-6 text-white" />
-                                        </div>
-                                        <div className="text-3xl font-black font-orbitron text-white">
-                                            {stat.value}
-                                        </div>
-                                    </div>
-                                    <p className="text-sm text-gray-400 uppercase tracking-wider">
-                                        {stat.label}
-                                    </p>
+function UserDashboardView({ userName, userEmail, statsCards, registrations, loading }: {
+    userName: string
+    userEmail: string
+    statsCards: Array<{ label: string; value: string; icon: ComponentType<{ className?: string }>; color: string; borderColor: string }>
+    registrations: RegistrationEntry[]
+    loading: boolean
+}) {
+    return (
+        <div className="space-y-6">
+            <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-3xl border border-white/5 bg-black/40 p-5"
+            >
+                <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/80 font-semibold mb-2">Participant Hub</p>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 className="text-3xl font-black font-orbitron text-white">Dashboard</h1>
+                        <p className="text-gray-400 text-sm">Hello {userName}, keep tabs on your TechnoHack journey.</p>
+                    </div>
+                    <Link
+                        href="/events"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-white/90"
+                    >
+                        Browse Events
+                        <ArrowRight className="w-4 h-4" />
+                    </Link>
+                </div>
+            </motion.section>
+
+            <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {statsCards.map((stat) => {
+                    const Icon = stat.icon
+                    return (
+                        <div key={stat.label} className="rounded-2xl border border-white/5 bg-[#05050c]/70 p-4">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.color} border ${stat.borderColor} grid place-items-center`}>
+                                    <Icon className="w-5 h-5 text-white" />
                                 </div>
-                            </motion.div>
+                                <div>
+                                    <p className="text-[11px] uppercase tracking-wide text-gray-400">{stat.label}</p>
+                                    <p className="text-2xl font-bold text-white">{stat.value}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                })}
+            </section>
+
+            <section className="space-y-4">
+                <header className="flex items-center justify-between">
+                    <div>
+                        <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/80">My Events</p>
+                        <h2 className="text-xl font-semibold text-white">Recent registrations</h2>
+                    </div>
+                    <Link href="/events" className="text-xs font-semibold text-cyan-300">View all</Link>
+                </header>
+
+                <div className="rounded-3xl border border-white/5 bg-black/40 divide-y divide-white/5">
+                    {loading ? (
+                        <div className="p-6 text-sm text-gray-400">Loading your events...</div>
+                    ) : registrations.length === 0 ? (
+                        <div className="p-6 text-center text-sm text-gray-400">
+                            Nothing yet. <Link href="/events" className="text-cyan-300 font-semibold">Browse events</Link>
+                        </div>
+                    ) : (
+                        registrations.slice(0, 4).map((reg) => {
+                            const event = reg.eventId
+                            if (!event) return null
+                            return (
+                                <div key={reg._id} className="p-5 space-y-3 text-sm">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <p className="text-white font-semibold">{event.title}</p>
+                                            <p className="text-[12px] text-gray-400">{event.category}</p>
+                                        </div>
+                                        <span className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                                            reg.status === "confirmed"
+                                                ? "border-emerald-500/40 text-emerald-300"
+                                                : reg.status === "pending"
+                                                    ? "border-amber-500/40 text-amber-300"
+                                                    : "border-rose-500/40 text-rose-300"
+                                        }`}>
+                                            {reg.status}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-3 text-[12px] text-gray-400">
+                                        <span className="flex items-center gap-1">
+                                            <Calendar className="w-3.5 h-3.5 text-cyan-300" />
+                                            {new Date(event.dateTime).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <Clock className="w-3.5 h-3.5 text-purple-300" />
+                                            {new Date(event.dateTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <MapPin className="w-3.5 h-3.5 text-pink-300" />
+                                            {event.venue}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-4 text-[11px] text-gray-400">
+                                        <span>Mode: <span className="text-white">{reg.paymentMode === "cash" ? "Cash" : "UPI"}</span></span>
+                                        <span>Status: <span className="text-white">{(reg.paymentStatus ?? "pending").toUpperCase()}</span></span>
+                                        <span>Paid: <span className="text-white">{currencyFormatter.format(reg.amountPaid ?? 0)}</span></span>
+                                    </div>
+                                    {reg.paymentMode === "cash" && reg.cashCode && (
+                                        <div className="text-[11px] text-amber-200 bg-amber-500/10 border border-amber-400/30 rounded-lg px-3 py-2 font-mono tracking-[0.3em]">
+                                            {reg.cashCode}
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        })
+                    )}
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="rounded-2xl border border-white/5 bg-[#05050c]/60 p-4">
+                        <p className="text-xs uppercase tracking-[0.25em] text-gray-400">Profile</p>
+                        <h3 className="text-lg font-semibold text-white mt-2">{userName}</h3>
+                        <p className="text-[13px] text-gray-400">{userEmail}</p>
+                        <Link href="/profile" className="mt-3 inline-flex text-xs font-semibold text-cyan-300">Edit profile →</Link>
+                    </div>
+                    <div className="rounded-2xl border border-white/5 bg-[#05050c]/60 p-4 space-y-2 text-sm text-gray-300">
+                        <p className="text-xs uppercase tracking-[0.25em] text-gray-400">Quick links</p>
+                        <Link href="/schedule" className="block text-white/80">View live schedule</Link>
+                        <Link href="/about" className="block text-white/80">About TechnoHack</Link>
+                    </div>
+                </div>
+            </section>
+        </div>
+    )
+}
+
+function AdminDashboardView({ userName, overview, loading }: {
+    userName: string
+    overview: AdminOverview | null
+    loading: boolean
+}) {
+    const stats = overview?.stats
+    const recent = overview?.recentRegistrations ?? []
+
+    const adminCards = [
+        { label: "Users", value: stats ? stats.users.toString() : "--", icon: UsersIcon },
+        { label: "Events", value: stats ? stats.events.toString() : "--", icon: Calendar },
+        { label: "Registrations", value: stats ? stats.registrations.toString() : "--", icon: FileText }
+    ]
+
+    const adminLinks = [
+        { href: "/admin", label: "Open Admin Panel", icon: Shield },
+        { href: "/admin/events", label: "Manage Events", icon: Calendar },
+        { href: "/admin/registrations", label: "View Registrations", icon: FileText },
+        { href: "/admin/analytics", label: "Analytics", icon: BarChart3 }
+    ]
+
+    return (
+        <div className="space-y-6">
+            <section className="rounded-3xl border border-cyan-500/20 bg-[#03040b]/80 p-5 text-white space-y-3">
+                <p className="text-[11px] uppercase tracking-[0.4em] text-cyan-300/80">Admin Console</p>
+                <h1 className="text-3xl font-black font-orbitron">Welcome, {userName}</h1>
+                <p className="text-sm text-gray-400">Monitor the festival and jump into admin tools in one tap.</p>
+            </section>
+
+            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {adminCards.map((card) => {
+                    const Icon = card.icon
+                    return (
+                        <div key={card.label} className="rounded-2xl border border-white/5 bg-black/50 p-4 text-white flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/40 grid place-items-center">
+                                <Icon className="w-5 h-5 text-cyan-200" />
+                            </div>
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{card.label}</p>
+                                <p className="text-2xl font-bold">{card.value}</p>
+                            </div>
+                        </div>
+                    )
+                })}
+            </section>
+
+            <section className="rounded-3xl border border-white/5 bg-black/40 p-4 space-y-3">
+                <p className="text-xs uppercase tracking-[0.3em] text-gray-400">Quick Actions</p>
+                <div className="grid grid-cols-2 gap-3">
+                    {adminLinks.map((action) => {
+                        const Icon = action.icon
+                        return (
+                            <Link
+                                key={action.href}
+                                href={action.href}
+                                className="flex items-center gap-2 rounded-2xl border border-white/10 px-3 py-2 text-xs font-semibold text-white/90"
+                            >
+                                <Icon className="w-4 h-4 text-cyan-300" />
+                                {action.label}
+                            </Link>
                         )
                     })}
                 </div>
+            </section>
 
-                {/* Main Content Grid */}
-                <div className="grid lg:grid-cols-3 gap-8">
-                    {/* My Events - Takes 2 columns */}
-                    <div className="lg:col-span-2">
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.4 }}
-                        >
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold font-orbitron text-white flex items-center gap-2">
-                                    <span className="w-2 h-2 bg-cyan-400 rounded-full"></span>
-                                    My Events
-                                </h2>
-                                <Link href="/events" className="text-cyan-400 hover:text-cyan-300 text-sm font-semibold flex items-center gap-1">
-                                    View All
-                                    <ArrowRight className="w-4 h-4" />
-                                </Link>
-                            </div>
-
-                            <div className="space-y-4">
-                                {loading ? (
-                                    <div className="text-center py-12 text-gray-400">Loading your events...</div>
-                                ) : registrations.length === 0 ? (
-                                    <div className="text-center py-12">
-                                        <p className="text-gray-400 mb-4">No events registered yet</p>
-                                        <Link href="/events" className="text-cyan-400 hover:text-cyan-300 font-semibold">
-                                            Browse Events →
-                                        </Link>
-                                    </div>
-                                ) : (
-                                    registrations.map((reg, index) => {
-                                        const event = reg.eventId
-                                        if (!event) return null
-
-                                        return (
-                                            <motion.div
-                                                key={reg._id}
-                                                initial={{ opacity: 0, x: -20 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: 0.5 + index * 0.1 }}
-                                                className="relative group"
-                                            >
-                                                <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/30 to-purple-950/30 rounded-lg border border-cyan-500/20 group-hover:border-cyan-500/40 transition-all" />
-                                                <div className="relative p-6">
-                                                    <div className="flex items-start justify-between mb-4">
-                                                        <div>
-                                                            <h3 className="text-xl font-bold text-white mb-1">{event.title}</h3>
-                                                            <p className="text-sm text-purple-400">{event.category}</p>
-                                                        </div>
-                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${reg.status === 'confirmed'
-                                                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                                                : reg.status === 'pending'
-                                                                    ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                                                                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                                            }`}>
-                                                            {reg.status}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-4 text-sm text-gray-400">
-                                                        <div className="flex items-center gap-2">
-                                                            <Calendar className="w-4 h-4 text-cyan-400" />
-                                                            {new Date(event.dateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <Clock className="w-4 h-4 text-purple-400" />
-                                                            {new Date(event.dateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <MapPin className="w-4 h-4 text-pink-400" />
-                                                            {event.venue}
-                                                        </div>
-                                                    </div>
-                                                    <div className="mt-3 pt-3 border-t border-cyan-500/20 space-y-2">
-                                                        {reg.teamName && (
-                                                            <p className="text-sm text-cyan-400">Team: {reg.teamName}</p>
-                                                        )}
-                                                        <div className="flex flex-wrap gap-4 text-xs text-gray-400">
-                                                            <span className="uppercase tracking-wider">
-                                                                Mode: <span className="text-white font-semibold">{reg.paymentMode === "cash" ? "Cash" : "UPI"}</span>
-                                                            </span>
-                                                            <span className="uppercase tracking-wider">
-                                                                Payment Status: <span className="text-white font-semibold">{(reg.paymentStatus ?? "pending").toUpperCase()}</span>
-                                                            </span>
-                                                            <span className="uppercase tracking-wider">
-                                                                Paid: <span className="text-white font-semibold">{currencyFormatter.format(reg.amountPaid ?? 0)}</span>
-                                                            </span>
-                                                        </div>
-                                                        {reg.paymentMode === "upi" && reg.transactionReference && (
-                                                            <p className="text-xs text-gray-400 border border-white/10 rounded-md px-3 py-2 bg-white/5">
-                                                                <span className="font-semibold text-white/80">UPI Reference:</span> {reg.transactionReference}
-                                                            </p>
-                                                        )}
-                                                        {reg.paymentMode === "cash" && reg.cashCode && (
-                                                            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
-                                                                <p className="text-[11px] uppercase tracking-[0.3em] text-amber-200">Cash Code</p>
-                                                                <p className="text-2xl font-black font-mono text-white tracking-[0.2em]">{reg.cashCode}</p>
-                                                                <p className="text-xs text-amber-100/80 mt-1">Show this code when you pay at the help desk.</p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </motion.div>
-                                        )
-                                    })
-                                )}
-                            </div>
-                        </motion.div>
+            <section className="rounded-3xl border border-white/5 bg-black/40">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+                    <div>
+                        <p className="text-xs uppercase tracking-[0.3em] text-gray-400">Recent Activity</p>
+                        <h2 className="text-lg font-semibold text-white">Latest registrations</h2>
                     </div>
-
-                    {/* Sidebar - Profile & Quick Actions */}
-                    <div className="space-y-6">
-                        {/* Profile Card */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.6 }}
-                            className="relative"
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-br from-purple-950/30 to-pink-950/30 rounded-lg border border-purple-500/20" />
-                            <div className="relative p-6">
-                                <div className="flex items-center gap-4 mb-4">
-                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center text-2xl font-bold text-white">
-                                        {user?.firstName?.[0] || 'U'}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-white">{user?.firstName} {user?.lastName}</h3>
-                                        <p className="text-sm text-gray-400">{user?.primaryEmailAddress?.emailAddress}</p>
-                                    </div>
-                                </div>
-                                <Link
-                                    href="/profile"
-                                    className="block w-full py-2 px-4 rounded-lg bg-purple-950/30 border border-purple-500/30 text-center text-white hover:bg-purple-950/50 hover:border-purple-500/50 transition-all"
-                                >
-                                    Edit Profile
-                                </Link>
-                            </div>
-                        </motion.div>
-
-                        {/* Quick Actions */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.7 }}
-                            className="relative"
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/30 to-blue-950/30 rounded-lg border border-cyan-500/20" />
-                            <div className="relative p-6">
-                                <h3 className="text-lg font-bold font-orbitron text-white mb-4">Quick Actions</h3>
-                                <div className="space-y-3">
-                                    <Link href="/events" className="block p-3 rounded-lg bg-cyan-950/20 border border-cyan-500/20 hover:border-cyan-500/40 text-white transition-all">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar className="w-5 h-5 text-cyan-400" />
-                                            <span className="font-semibold">Browse Events</span>
-                                        </div>
-                                    </Link>
-                                    <Link href="/schedule" className="block p-3 rounded-lg bg-purple-950/20 border border-purple-500/20 hover:border-purple-500/40 text-white transition-all">
-                                        <div className="flex items-center gap-2">
-                                            <Clock className="w-5 h-5 text-purple-400" />
-                                            <span className="font-semibold">View Schedule</span>
-                                        </div>
-                                    </Link>
-                                    <Link href="/about" className="block p-3 rounded-lg bg-pink-950/20 border border-pink-500/20 hover:border-pink-500/40 text-white transition-all">
-                                        <div className="flex items-center gap-2">
-                                            <User className="w-5 h-5 text-pink-400" />
-                                            <span className="font-semibold">About Event</span>
-                                        </div>
-                                    </Link>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </div>
+                    {loading && <span className="text-[11px] text-gray-400">Syncing</span>}
                 </div>
-            </div>
+                <div className="divide-y divide-white/5">
+                    {recent.length === 0 ? (
+                        <p className="p-5 text-sm text-gray-400">No registrations yet.</p>
+                    ) : (
+                        recent.map((entry) => (
+                            <div key={entry.id} className="p-5 text-sm text-white/80 space-y-1">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div>
+                                        <p className="font-semibold text-white">{entry.eventTitle}</p>
+                                        <p className="text-xs text-gray-400">{entry.eventCategory}</p>
+                                    </div>
+                                    <span className="text-[11px] px-2 py-0.5 rounded-full border border-white/20 text-white/70">{entry.status}</span>
+                                </div>
+                                <p className="text-xs text-gray-400">{entry.userName} · {entry.userEmail}</p>
+                                <p className="text-[11px] text-gray-500">{new Date(entry.registeredAt).toLocaleString()}</p>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </section>
         </div>
     )
 }

@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import React from "react"
 import { AdminActionToast } from "@/components/admin/AdminActionToast"
+import { AdminMobileNav } from "@/components/admin/AdminMobileNav"
 export default async function AdminLayout({
     children,
 }: {
@@ -29,8 +30,22 @@ export default async function AdminLayout({
 
     const user = result.user
 
+    const mobileNavLinks = [
+        { href: "/admin", label: "Dashboard" },
+        { href: "/admin/analytics", label: "Analytics" },
+        { href: "/admin/events", label: "Events" },
+        { href: "/admin/users", label: "Users" },
+        { href: "/admin/registrations", label: "Registrations" },
+        { href: "/admin/payment-settings", label: "Payments" },
+        ...(user?.role === "superadmin" ? [
+            { href: "/admin/audit-logs", label: "Audit Logs" },
+            { href: "/admin/admins", label: "Admin Users" },
+            { href: "/admin/settings", label: "Settings" }
+        ] : [])
+    ]
+
     return (
-        <div className="min-h-screen bg-background flex">
+        <div className="min-h-screen bg-background flex flex-col lg:flex-row">
             {/* Sidebar */}
             <aside className="w-72 border-r border-cyan-500/20 bg-gradient-to-b from-[#0a0a0f] to-[#050508] hidden lg:flex flex-col">
                 {/* Header */}
@@ -128,20 +143,37 @@ export default async function AdminLayout({
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col">
+            <main className="flex-1 flex flex-col min-h-screen">
                 {/* Top Bar */}
-                <header className="h-16 border-b border-cyan-500/20 bg-[#0a0a0f]/50 backdrop-blur-xl flex items-center justify-between px-6">
+                <header className="border-b border-cyan-500/20 bg-[#0a0a0f]/60 backdrop-blur-xl px-4 sm:px-6 py-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h2 className="text-lg font-semibold text-white">Admin Panel</h2>
-                        <p className="text-xs text-gray-500">Manage TechnoHack 2026</p>
+                        <p className="text-[10px] uppercase tracking-[0.4em] text-cyan-400/80 font-semibold mb-1">Operations</p>
+                        <h2 className="text-2xl sm:text-3xl font-semibold text-white">Admin Panel</h2>
+                        <p className="text-xs text-gray-500 mt-1">
+                            Managing TechnoHack 2026 · Signed in as <span className="text-cyan-300 font-medium">{user?.firstName || "Admin"}</span>
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/30 text-xs text-cyan-200 lg:hidden">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                            {user?.role === 'superadmin' ? 'Super Admin' : 'Admin'}
+                        </span>
+                        <Link
+                            href="/"
+                            className="text-sm font-semibold text-cyan-400 hover:text-cyan-200 transition lg:hidden"
+                        >
+                            ← Back to Site
+                        </Link>
                     </div>
                     {/* <CustomUserButton /> */}
                 </header>
 
+                <AdminMobileNav links={mobileNavLinks} />
+
                 <AdminActionToast />
 
                 {/* Content */}
-                <div className="flex-1 p-8 overflow-y-auto">
+                <div className="flex-1 p-6 sm:p-8 pb-12 overflow-y-auto">
                     {children}
                 </div>
             </main>

@@ -3,6 +3,7 @@ import { Inter, Orbitron } from "next/font/google"; // Verify Orbitron availabil
 import "./globals.css";
 import { Navbar } from "@/components/shared/Navbar";
 import { Footer } from "@/components/shared/Footer";
+import { GlobalLoadingIndicator } from "@/components/shared/GlobalLoadingIndicator";
 import { ClerkProvider } from "@clerk/nextjs";
 
 const inter = Inter({
@@ -34,6 +35,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" className={`${inter.variable} ${orbitron.variable}`}>
         <body className="flex flex-col min-h-screen bg-background text-foreground antialiased selection:bg-primary selection:text-black">
+          <GlobalLoadingIndicator />
           <Navbar />
           <main className="flex-grow pt-16 relative z-10">
             {children}

@@ -8,9 +8,8 @@ const PaymentSettingsSchema = new Schema({
     updatedAt: { type: Date, default: Date.now }
 })
 
-PaymentSettingsSchema.pre("save", function setUpdated(next) {
+PaymentSettingsSchema.pre("save", function setUpdated() {
     this.updatedAt = new Date()
-    next()
 })
 
 export interface PaymentSettingsDocument {
