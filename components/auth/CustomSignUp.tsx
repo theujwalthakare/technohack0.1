@@ -6,6 +6,14 @@ import { useState, FormEvent } from "react"
 import Link from "next/link"
 import { Mail, Lock, User as UserIcon, Loader2, Github } from "lucide-react"
 
+const getClerkErrorMessage = (err: unknown, fallback: string) => {
+    if (err && typeof err === "object" && "errors" in err) {
+        const clerkError = err as { errors?: Array<{ message?: string }> }
+        return clerkError.errors?.[0]?.message || fallback
+    }
+    return fallback
+}
+
 export function CustomSignUp() {
     const { isLoaded, signUp, setActive } = useSignUp()
     const [email, setEmail] = useState("")
@@ -37,9 +45,9 @@ export function CustomSignUp() {
             await signUp.prepareEmailAddressVerification({ strategy: "email_code" })
 
             setVerifying(true)
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Sign up error:", err)
-            setError(err.errors?.[0]?.message || "Failed to create account")
+            setError(getClerkErrorMessage(err, "Failed to create account"))
         } finally {
             setIsLoading(false)
         }
@@ -63,9 +71,9 @@ export function CustomSignUp() {
             } else {
                 setError("Verification incomplete. Please try again.")
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Verification error:", err)
-            setError(err.errors?.[0]?.message || "Invalid verification code")
+            setError(getClerkErrorMessage(err, "Invalid verification code"))
         } finally {
             setIsLoading(false)
         }
@@ -80,9 +88,9 @@ export function CustomSignUp() {
                 redirectUrl: "/sso-callback",
                 redirectUrlComplete: "/dashboard",
             })
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("OAuth error:", err)
-            setError(err.errors?.[0]?.message || "OAuth sign up failed")
+            setError(getClerkErrorMessage(err, "OAuth sign up failed"))
         }
     }
 

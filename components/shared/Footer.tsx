@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Instagram, Linkedin, Mail, MapPin, Phone } from "lucide-react"
+import { Instagram, Linkedin, Mail, MapPin } from "lucide-react"
 
 const socialLinks = [
     { icon: Instagram, href: "https://www.instagram.com/kvn_naik_bca_bsc_compsci/", label: "Instagram", color: "hover:text-pink-400" },

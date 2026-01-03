@@ -1,8 +1,24 @@
+import { ReactNode } from "react";
 import { getAdminStats } from "@/lib/actions/admin.actions";
 import { Users, Calendar, Activity } from "lucide-react";
 
+type RecentRegistration = {
+    _id: string;
+    eventTitle?: string;
+    clerkId?: string;
+    status: string;
+    registeredAt: string;
+};
+
+type AdminStats = {
+    users: number;
+    registrations: number;
+    events: number;
+    recentRegistrations: RecentRegistration[];
+};
+
 export default async function AdminDashboard() {
-    const stats = await getAdminStats();
+    const stats = await getAdminStats() as AdminStats;
 
     return (
         <div className="space-y-8">
@@ -34,7 +50,7 @@ export default async function AdminDashboard() {
                     {stats.recentRegistrations.length === 0 ? (
                         <p className="text-muted-foreground">No registrations yet.</p>
                     ) : (
-                        stats.recentRegistrations.map((reg: any) => (
+                        stats.recentRegistrations.map((reg: RecentRegistration) => (
                             <div key={reg._id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/5">
                                 <div>
                                     <p className="font-medium text-white">{reg.eventTitle}</p>
@@ -57,7 +73,7 @@ export default async function AdminDashboard() {
     )
 }
 
-function StatCard({ label, value, icon }: any) {
+function StatCard({ label, value, icon }: { label: string; value: number; icon: ReactNode }) {
     return (
         <div className="bg-card border border-white/10 p-6 rounded-xl flex items-center justify-between">
             <div>

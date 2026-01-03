@@ -33,9 +33,12 @@ export function CustomSignIn() {
             } else {
                 setError("Something went wrong. Please try again.")
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Sign in error:", err)
-            setError(err.errors?.[0]?.message || "Invalid email or password")
+            const message = err && typeof err === "object" && "errors" in err
+                ? (err as { errors?: Array<{ message?: string }> }).errors?.[0]?.message
+                : undefined
+            setError(message || "Invalid email or password")
         } finally {
             setIsLoading(false)
         }
@@ -50,9 +53,12 @@ export function CustomSignIn() {
                 redirectUrl: "/sso-callback",
                 redirectUrlComplete: "/dashboard",
             })
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("OAuth error:", err)
-            setError(err.errors?.[0]?.message || "OAuth sign in failed")
+            const message = err && typeof err === "object" && "errors" in err
+                ? (err as { errors?: Array<{ message?: string }> }).errors?.[0]?.message
+                : undefined
+            setError(message || "OAuth sign in failed")
         }
     }
 
@@ -189,7 +195,7 @@ export function CustomSignIn() {
 
                         {/* Sign Up Link */}
                         <p className="mt-6 text-center text-sm text-gray-400">
-                            Don't have an account?{" "}
+                            Don&apos;t have an account?{" "}
                             <Link href="/sign-up" className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors">
                                 Sign up
                             </Link>

@@ -3,6 +3,7 @@
 import { useUser, useClerk } from "@clerk/nextjs"
 import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { User, LogOut, Settings, LayoutDashboard, ChevronDown, Shield } from "lucide-react"
 import { useRouter } from "next/navigation"
 
@@ -44,9 +45,11 @@ export function CustomUserButton() {
                 {/* Avatar */}
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold ring-1 ring-white/10 group-hover:ring-white/20 transition-all">
                     {user.imageUrl ? (
-                        <img
+                        <Image
                             src={user.imageUrl}
                             alt={user.fullName || "User"}
+                            width={32}
+                            height={32}
                             className="w-full h-full rounded-full object-cover"
                         />
                     ) : (
@@ -81,9 +84,11 @@ export function CustomUserButton() {
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center text-white font-bold">
                                         {user.imageUrl ? (
-                                            <img
+                                            <Image
                                                 src={user.imageUrl}
                                                 alt={user.fullName || "User"}
+                                                width={40}
+                                                height={40}
                                                 className="w-full h-full rounded-full object-cover"
                                             />
                                         ) : (

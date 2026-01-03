@@ -2,12 +2,11 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Menu, X, Github, Twitter, Globe, ShoppingCart, User } from "lucide-react"
+import { Menu, X, User } from "lucide-react"
 import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useUser } from "@clerk/nextjs"
-import { ParticleBackground } from "@/components/effects/ParticleBackground"
 import { CustomUserButton } from "@/components/shared/CustomUserButton"
 
 const navLinks = [

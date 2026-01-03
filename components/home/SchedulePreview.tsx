@@ -3,7 +3,7 @@
 import { motion } from "framer-motion"
 import { SectionHeader } from "@/components/shared/SectionHeader"
 import { homePageData } from "@/lib/config/homePageData"
-import { Clock, MapPin } from "lucide-react"
+import { MapPin } from "lucide-react"
 
 export function SchedulePreview() {
     return (

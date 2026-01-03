@@ -3,8 +3,7 @@
 import { useState } from "react"
 import { useUser } from "@clerk/nextjs"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Users, Mail, Phone, Plus, Trash2 } from "lucide-react"
-import { registerForEvent } from "@/lib/actions/registration.actions"
+import { X, Plus, Trash2 } from "lucide-react"
 
 interface RegisterModalProps {
     event: {
@@ -53,22 +52,27 @@ export function RegisterModal({ event, isOpen, onClose, onSuccess }: RegisterMod
         setError("")
 
         try {
-            const result = await registerForEvent({
-                userId: user.id,
+            const payload = {
                 eventId: event._id,
-                userName: `${user.firstName} ${user.lastName}`,
-                userEmail: user.primaryEmailAddress?.emailAddress || "",
                 teamName: isTeamEvent ? teamName : undefined,
-                teamMembers: isTeamEvent ? teamMembers.filter(m => m.name && m.email) : undefined
+                teamMembers: isTeamEvent ? teamMembers.filter(m => m.name || m.email || m.phone) : undefined
+            }
+
+            const response = await fetch("/api/events/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
             })
 
-            if (result.success) {
+            const result = await response.json()
+
+            if (response.ok && result.success) {
                 onSuccess()
                 onClose()
             } else {
-                setError(result.error || "Registration failed")
+                setError(result.message || result.error || "Registration failed")
             }
-        } catch (err) {
+        } catch {
             setError("Something went wrong")
         } finally {
             setLoading(false)

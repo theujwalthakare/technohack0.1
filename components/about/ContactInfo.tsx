@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { MapPin, Calendar, Building2, Mail } from "lucide-react"
+import { MapPin, Calendar, Building2 } from "lucide-react"
 
 const contactDetails = [
     {

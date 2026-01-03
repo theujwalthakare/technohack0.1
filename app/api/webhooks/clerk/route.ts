@@ -1,6 +1,6 @@
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
-import { WebhookEvent } from '@clerk/nextjs/server'
+import { WebhookEvent, clerkClient } from '@clerk/nextjs/server'
 import { createUser } from '@/lib/actions/user.actions'
 import { NextResponse } from 'next/server'
 
@@ -51,20 +51,58 @@ export async function POST(req: Request) {
     const { id } = evt.data;
     const eventType = evt.type;
 
-    if (eventType === 'user.created') {
-        const { id, email_addresses, image_url, first_name, last_name, phone_numbers } = evt.data;
-
-        const user = {
-            clerkId: id,
-            email: email_addresses[0].email_address,
-            firstName: first_name,
-            lastName: last_name,
-            imageUrl: image_url,
-            phone: phone_numbers?.[0]?.phone_number,
-        }
-
-        await createUser(user);
+    if (eventType === 'user.created' || eventType === 'user.updated') {
+        const payload = transformClerkPayload(evt.data);
+        await createUser(payload);
     }
 
-    return NextResponse.json({ message: 'OK', user: id });
+    if (eventType === 'session.created') {
+        const userId = evt.data.user_id;
+        if (userId) {
+            const clerkUser = await clerkClient.users.getUser(userId);
+            const payload = transformClerkPayload(clerkUser);
+            const lastActive = timestampToDate(evt.data.last_active_at) ?? new Date();
+            await createUser(payload, { trackLogin: true, lastLoginAt: lastActive });
+        }
+    }
+
+    return NextResponse.json({ message: 'OK', user: id, eventType });
+}
+
+type ClerkUserLike = {
+    id: string;
+    email_addresses?: Array<{ email_address: string }>;
+    emailAddresses?: Array<{ emailAddress: string }>;
+    first_name?: string | null;
+    firstName?: string | null;
+    last_name?: string | null;
+    lastName?: string | null;
+    image_url?: string | null;
+    imageUrl?: string | null;
+    phone_numbers?: Array<{ phone_number: string }>;
+    phoneNumbers?: Array<{ phoneNumber: string }>;
+};
+
+function transformClerkPayload(data: ClerkUserLike) {
+    const email = data?.email_addresses?.[0]?.email_address
+        ?? data?.emailAddresses?.[0]?.emailAddress;
+
+    if (!email) {
+        throw new Error('Unable to determine primary email for Clerk user');
+    }
+
+    return {
+        clerkId: data.id,
+        email,
+        firstName: data.first_name ?? data.firstName ?? null,
+        lastName: data.last_name ?? data.lastName ?? null,
+        imageUrl: data.image_url ?? data.imageUrl ?? null,
+        phone: data.phone_numbers?.[0]?.phone_number ?? data.phoneNumbers?.[0]?.phoneNumber ?? null
+    };
+}
+
+function timestampToDate(input?: number | null) {
+    if (!input) return undefined;
+    // Clerk timestamps are in seconds
+    return new Date(input * 1000);
 }

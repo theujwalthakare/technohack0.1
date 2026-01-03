@@ -1,6 +1,5 @@
 "use client"
 
-import { registerForEvent } from "@/lib/actions/user.actions"
 import { useTransition, useState } from "react"
 import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
@@ -24,13 +23,22 @@ export function RegisterButton({ eventId, isRegistered }: RegisterButtonProps) {
 
         startTransition(async () => {
             try {
-                const res = await registerForEvent(eventId);
-                if (res.success) {
+                const response = await fetch("/api/events/register", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ eventId })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
                     setMessage("Successfully Registered!");
                 } else {
-                    setMessage(res.message);
+                    setMessage(result.message || "Registration failed");
                 }
-            } catch (error) {
+            } catch {
                 setMessage("Something went wrong");
             }
         });

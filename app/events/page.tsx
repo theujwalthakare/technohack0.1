@@ -1,8 +1,5 @@
 import { getAllEvents } from "@/lib/actions/event.actions";
 import { PageContainer } from "@/components/shared/PageContainer";
-import Link from "next/link";
-import { Calendar, MapPin, Users, ArrowRight } from "lucide-react";
-import Image from "next/image";
 import { EventCard } from "@/components/events/EventCard";
 
 // Force dynamic rendering to avoid MongoDB connection during build

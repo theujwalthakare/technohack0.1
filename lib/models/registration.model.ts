@@ -36,6 +36,8 @@ const RegistrationSchema = new Schema({
 
 // Compound index to prevent duplicate registrations
 RegistrationSchema.index({ userId: 1, eventId: 1 }, { unique: true });
+RegistrationSchema.index({ eventId: 1 });
+RegistrationSchema.index({ registeredAt: 1 });
 
 // TypeScript Interface
 export interface Registration {

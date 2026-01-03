@@ -3,51 +3,84 @@
 import { connectToDatabase } from "@/lib/db"
 import Registration from "@/lib/models/registration.model"
 import Event from "@/lib/models/event.model"
-import { Registration as RegistrationType } from "@/lib/models/registration.model"
 import { Event as IEvent } from "@/lib/models/event.model"
+import { auth, currentUser } from "@clerk/nextjs/server"
+import { User } from "@/lib/models/user.model"
 
-// Register for an event
-export async function registerForEvent(data: {
-    userId: string;
-    eventId: string;
-    userName: string;
-    userEmail: string;
-    teamName?: string;
-    teamMembers?: Array<{ name: string; email: string; phone: string }>;
+type TeamMemberInput = { name?: string; email?: string; phone?: string }
+
+// Register the currently authenticated user for an event
+export async function registerCurrentUserForEvent({
+    eventId,
+    teamName,
+    teamMembers = []
+}: {
+    eventId: string
+    teamName?: string
+    teamMembers?: TeamMemberInput[]
 }) {
+    const { userId: clerkId } = await auth()
+    if (!clerkId) {
+        return { success: false, message: "Unauthorized" }
+    }
+
     try {
-        await connectToDatabase();
+        await connectToDatabase()
 
-        // Check if event exists
-        const event = await Event.findById(data.eventId);
+        let user = await User.findOne({ clerkId })
+
+        if (!user) {
+            const clerkProfile = await currentUser()
+            if (!clerkProfile) {
+                return { success: false, message: "User not found" }
+            }
+
+            user = await User.create({
+                clerkId,
+                email: clerkProfile.emailAddresses[0]?.emailAddress,
+                firstName: clerkProfile.firstName,
+                lastName: clerkProfile.lastName,
+                imageUrl: clerkProfile.imageUrl
+            })
+        }
+
+        const event = await Event.findById(eventId)
         if (!event) {
-            return { success: false, error: "Event not found" };
+            return { success: false, message: "Event not found" }
         }
 
-        // Check if already registered
-        const existing = await Registration.findOne({
-            userId: data.userId,
-            eventId: data.eventId
-        });
-
-        if (existing) {
-            return { success: false, error: "Already registered for this event" };
+        const alreadyRegistered = await Registration.findOne({ userId: clerkId, eventId: event._id })
+        if (alreadyRegistered) {
+            return { success: false, message: "Already registered for this event" }
         }
 
-        // Create registration
+        const sanitizedTeamMembers = (teamMembers || [])
+            .map(member => ({
+                name: member.name?.trim() || undefined,
+                email: member.email?.trim() || undefined,
+                phone: member.phone?.trim() || undefined
+            }))
+            .filter(member => member.name || member.email || member.phone)
+
         const registration = await Registration.create({
-            ...data,
+            userId: clerkId,
+            eventId: event._id,
+            userName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+            userEmail: user.email,
+            teamName: teamName?.trim() || undefined,
+            teamMembers: sanitizedTeamMembers,
             status: "confirmed",
             paymentStatus: "pending"
-        });
+        })
 
         return {
             success: true,
             registration: JSON.parse(JSON.stringify(registration))
-        };
-    } catch (error: any) {
-        console.error("Registration error:", error);
-        return { success: false, error: error.message };
+        }
+    } catch (error: unknown) {
+        console.error("Registration error:", error)
+        const message = error instanceof Error ? error.message : "Registration failed"
+        return { success: false, message }
     }
 }
 
@@ -62,7 +95,7 @@ export async function getUserRegistrations(userId: string) {
             .lean();
 
         return JSON.parse(JSON.stringify(registrations));
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching registrations:", error);
         return [];
     }
@@ -79,7 +112,8 @@ export async function checkRegistrationStatus(userId: string, eventId: string) {
             isRegistered: !!registration,
             status: registration?.status || null
         };
-    } catch (error) {
+    } catch (error: unknown) {
+        console.error("Error checking registration status:", error);
         return { isRegistered: false, status: null };
     }
 }
@@ -101,6 +135,7 @@ export async function cancelRegistration(userId: string, eventId: string) {
 
         return { success: true };
     } catch (error: unknown) {
+        console.error("Error cancelling registration:", error)
         return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
 }
@@ -133,7 +168,8 @@ export async function getUserStats(userId: string) {
             completed: completed.length,
             points: completed.length * 50 // 50 points per completed event
         };
-    } catch (error) {
+    } catch (error: unknown) {
+        console.error("Error computing user stats:", error)
         return { total: 0, upcoming: 0, completed: 0, points: 0 };
     }
 }

@@ -19,7 +19,7 @@ export default function UnauthorizedPage() {
 
                 {/* Message */}
                 <p className="text-gray-400 mb-2">
-                    You don't have permission to access this area.
+                    You don&apos;t have permission to access this area.
                 </p>
                 <p className="text-sm text-gray-500 mb-8">
                     This section is restricted to authorized administrators only.

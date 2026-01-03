@@ -11,8 +11,8 @@ import {
     BarChart3,
     UserCog
 } from "lucide-react"
-import { CustomUserButton } from "@/components/shared/CustomUserButton"
-
+import React from "react"
+import { AdminActionToast } from "@/components/admin/AdminActionToast"
 export default async function AdminLayout({
     children,
 }: {
@@ -129,8 +129,10 @@ export default async function AdminLayout({
                         <h2 className="text-lg font-semibold text-white">Admin Panel</h2>
                         <p className="text-xs text-gray-500">Manage TechnoHack 2026</p>
                     </div>
-                    <CustomUserButton />
+                    {/* <CustomUserButton /> */}
                 </header>
+
+                <AdminActionToast />
 
                 {/* Content */}
                 <div className="flex-1 p-8 overflow-y-auto">

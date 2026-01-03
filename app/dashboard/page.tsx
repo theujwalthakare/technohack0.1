@@ -5,33 +5,64 @@ import { motion } from "framer-motion"
 import { Calendar, Trophy, User, Zap, ArrowRight, Clock, MapPin } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { getUserRegistrations, getUserStats } from "@/lib/actions/registration.actions"
+
+type DashboardStats = {
+    total: number
+    upcoming: number
+    completed: number
+    points: number
+}
+
+type RegistrationEntry = {
+    _id: string
+    status: string
+    teamName?: string
+    eventId?: {
+        title: string
+        category: string
+        dateTime: string
+        venue: string
+    } | null
+}
 
 export default function DashboardPage() {
     const { user } = useUser()
-    const [stats, setStats] = useState({ total: 0, upcoming: 0, completed: 0, points: 0 })
-    const [registrations, setRegistrations] = useState<any[]>([])
+    const [stats, setStats] = useState<DashboardStats>({ total: 0, upcoming: 0, completed: 0, points: 0 })
+    const [registrations, setRegistrations] = useState<RegistrationEntry[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        if (user) {
-            loadData()
-        }
-    }, [user])
-
-    const loadData = async () => {
         if (!user) return
 
-        setLoading(true)
-        const [userStats, userRegs] = await Promise.all([
-            getUserStats(user.id),
-            getUserRegistrations(user.id)
-        ])
+        let isMounted = true
 
-        setStats(userStats)
-        setRegistrations(userRegs)
-        setLoading(false)
-    }
+        const fetchData = async () => {
+            setLoading(true)
+            try {
+                const response = await fetch("/api/me/registrations")
+                if (!response.ok) {
+                    throw new Error("Failed to load dashboard data")
+                }
+                const data = await response.json() as { stats: DashboardStats; registrations: RegistrationEntry[] }
+                if (isMounted) {
+                    setStats(data.stats)
+                    setRegistrations(data.registrations)
+                }
+            } catch (error) {
+                console.error(error)
+            } finally {
+                if (isMounted) {
+                    setLoading(false)
+                }
+            }
+        }
+
+        fetchData()
+
+        return () => {
+            isMounted = false
+        }
+    }, [user])
 
     const statsCards = [
         { label: "Events Registered", value: stats.total.toString(), icon: Calendar, color: "from-cyan-500/20 to-blue-500/20", borderColor: "border-cyan-500/30" },

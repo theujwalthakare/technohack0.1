@@ -4,13 +4,29 @@ import { getEventRegistrations } from "@/lib/actions/admin.actions"
 import { Download, Loader2 } from "lucide-react"
 import { useState } from "react"
 
+type ExportUser = {
+    firstName?: string
+    lastName?: string
+    email?: string
+    phone?: string
+    college?: string
+}
+
+type ExportRegistration = {
+    _id: string
+    status: string
+    registeredAt: string
+    userId?: ExportUser
+    teamMembers?: Array<{ name?: string; email?: string; phone?: string }>
+}
+
 export function ExportButton({ eventId, eventTitle }: { eventId: string, eventTitle: string }) {
     const [loading, setLoading] = useState(false);
 
     const handleDownload = async () => {
         try {
             setLoading(true);
-            const data = await getEventRegistrations(eventId);
+            const data = await getEventRegistrations(eventId) as ExportRegistration[];
 
             if (!data || data.length === 0) {
                 alert("No registrations found for this event.");
@@ -22,15 +38,20 @@ export function ExportButton({ eventId, eventTitle }: { eventId: string, eventTi
                 ["Name", "Email", "Phone", "College", "Status", "Team Members", "Registered At"]
             ];
 
-            data.forEach((reg: any) => {
+            data.forEach((reg) => {
                 const user = reg.userId || {};
+                const teamMembersList = Array.isArray(reg.teamMembers)
+                    ? reg.teamMembers
+                        .map(member => member.name || member.email || member.phone)
+                        .filter(Boolean)
+                    : []
                 csvRows.push([
                     `"${user.firstName || ''} ${user.lastName || ''}"`,
                     `"${user.email || ''}"`,
                     `"${user.phone || ''}"`,
                     `"${user.college || ''}"`,
                     `"${reg.status}"`,
-                    `"${reg.teamMembers ? reg.teamMembers.join(', ') : ''}"`,
+                    `"${teamMembersList.join(', ')}"`,
                     `"${new Date(reg.registeredAt).toLocaleString()}"`
                 ]);
             });

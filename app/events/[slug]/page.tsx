@@ -1,9 +1,8 @@
 import { getEventBySlug } from "@/lib/actions/event.actions";
 import { getRegistrationStatus } from "@/lib/actions/user.actions";
 import { PageContainer } from "@/components/shared/PageContainer";
-import { Calendar, MapPin, Users, Phone, User, Trophy, DollarSign } from "lucide-react";
+import { Calendar, MapPin, Users, User, DollarSign } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RegisterButton } from "@/components/events/RegisterButton";
 
