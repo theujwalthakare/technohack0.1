@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     const eventType = evt.type;
 
     if (eventType === 'user.created' || eventType === 'user.updated') {
-        const payload = transformClerkPayload(evt.data);
+        const payload = await ensurePayloadHasEmail(evt.data);
         await createUser(payload);
     }
 
@@ -100,6 +100,19 @@ function transformClerkPayload(data: ClerkUserLike) {
         imageUrl: data.image_url ?? data.imageUrl ?? null,
         phone: data.phone_numbers?.[0]?.phone_number ?? data.phoneNumbers?.[0]?.phoneNumber ?? null
     };
+}
+
+async function ensurePayloadHasEmail(data: ClerkUserLike) {
+    try {
+        return transformClerkPayload(data);
+    } catch (error) {
+        if (error instanceof Error && error.message.includes('Unable to determine primary email')) {
+            const client = await clerkClient();
+            const fullUser = await client.users.getUser(data.id);
+            return transformClerkPayload(fullUser);
+        }
+        throw error;
+    }
 }
 
 function timestampToDate(input?: number | null) {
